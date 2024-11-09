@@ -1,0 +1,2 @@
+PORT_FILE_NAME = "myport.info"
+DEFAULT_SERVER_PORT = 1357
