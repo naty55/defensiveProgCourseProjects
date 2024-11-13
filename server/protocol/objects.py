@@ -5,7 +5,7 @@ class Request:
     request_header_length = 23 # bytes
 
     def __init__(self, client_id, version, code, payload_size, payload):
-        self.cid = client_id.decode('utf-8')
+        self.cid = client_id
         self.client_version = version
         self.req_code = code
         self.payload_size = payload_size
@@ -26,7 +26,7 @@ class Request:
             raise Exception("Invalid request")
         payload = None
         if payload_size > 0:
-            payload = req_bytes[23:]
+            payload = req_bytes[header_length:]
         return cls(client_id, client_version, req_code, payload_size, payload)
     
     @classmethod
