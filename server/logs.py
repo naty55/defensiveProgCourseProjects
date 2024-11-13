@@ -1,9 +1,12 @@
 from enum import Enum
 
+
+
 class LoggingLevel(Enum):
     DEBUG = 1
     INFO = 2
     WARN = 3
+    ERROR = 4
 
 class Logger:
     """
@@ -25,6 +28,11 @@ class Logger:
     def info(self, message):
         if LoggingLevel.INFO.value >= self.logging_level.value:
             print(f"INFO - {message}")
+    
+    def error(self, message):
+        if LoggingLevel.ERROR.value >= self.logging_level.value:
+            print(f"ERROR - {message}")
         
         
     
+logger = Logger(LoggingLevel.DEBUG)
