@@ -9,3 +9,5 @@ class User:
     def __str__(self) -> str:
         return f"User - id={self.id}, name={self.name}, public_key={self.public_key}"
     
+    def __repr__(self) -> str:
+        return self.__str__()
