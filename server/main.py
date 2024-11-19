@@ -29,6 +29,7 @@ def main():
                 data = conn.recv(1024)
                 if len(data) >= Request.header_size():
                     try:
+                        logger.debug(f"Request bytes={data}")
                         request = Request.from_bytes(data)
                         handle_request(request, conn)
                     except Exception as e:
@@ -40,6 +41,7 @@ def main():
                         
 
 def handle_request(request, conn):
+    print("---Clients---", clients)
     logger.info(f"Handling request {request}")
     code = request.req_code
     response = None
@@ -57,10 +59,18 @@ def handle_request(request, conn):
             response = Response(SERVER_VERSION, Codes.LIST_CLIENT_RESPONSE_CODE, len(client_list), client_list)
         
         case Codes.GET_PUBLIC_KEY_REQUEST_CODE:
-            response = Response(SERVER_VERSION, Codes.GET_PUBLIC_KEY_RESPONSE_CODE, 0, None)
+            client_id = request.payload
+            public_key = clients[client_id].public_key
+            response_payload = client_id + public_key
+            response = Response(SERVER_VERSION, Codes.GET_PUBLIC_KEY_RESPONSE_CODE, len(response_payload), response_payload)
         
+        case Codes.SEND_MESSEGE_REQUEST_CODE:
+            response = Response(SERVER_VERSION, Codes.SEND_MESSEGE_RESPONSE_CODE, 0, None)
+        
+        case Codes.GET_MESSEGES_REQUEST_CODE:
+            response = Response(SERVER_VERSION, Codes.GET_MESSEGES_RESPONSE_CODE, 0, None)
         case _:
-            response = Response(1, 9000, 0, None).to_bytes()
+            response = Response(1, 9000, 0, None)
     
     logger.info(F"Sending Response {response}")
     conn.sendall(response.to_bytes())
