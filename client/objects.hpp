@@ -3,23 +3,25 @@
 #include "config.hpp"
 #include <crtdefs.h>
 #include <ostream>
+#include <vector>
 
 class Request {
     private: 
-    unsigned char clientId[HEADER_CLIENT_ID_SIZE];
+    char clientId[HEADER_CLIENT_ID_SIZE];
     unsigned char client_version;
     unsigned short int request_code;
     unsigned long int payload_size;
-    char payload[];
+    std::vector<char> payload;
     public:
     Request(
-        unsigned char clientId[HEADER_CLIENT_ID_SIZE],
+        char clientId[HEADER_CLIENT_ID_SIZE],
         unsigned char client_version,
         unsigned short int request_code,
         unsigned long int payload_size,
-        char payload[]);
+        unsigned char *payload);
     void to_bytes(char* buffer, size_t size);
     size_t size_in_bytes();
+    friend std::ostream& operator<<(std::ostream& os, const Request& request);
 };
 
 
@@ -28,9 +30,12 @@ class Response {
     unsigned short int server_version;
     unsigned short int response_code;
     unsigned long int payload_size;
-    char payload[];
+    std::vector<char> payload;
     public:
     Response(char *response_bytes, size_t size);
+    ~Response();
+    char* getPayload();
+    size_t getPayloadSize();
     friend std::ostream& operator<<(std::ostream& os, const Response& response);
 };
 
