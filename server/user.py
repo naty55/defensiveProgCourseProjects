@@ -1,4 +1,5 @@
 import uuid
+
 class User:
     def __init__(self, name, public_key):
         self.id = uuid.uuid4()
@@ -7,7 +8,7 @@ class User:
         self.unread_messages = []
     
     def __str__(self) -> str:
-        return f"User - id={self.id}, name={self.name}, public_key={self.public_key}"
+        return f"User - id={self.id}, name={self.name}, public_key={self.public_key}, unread_messages={self.unread_messages}"
     
     def __repr__(self) -> str:
         return self.__str__()

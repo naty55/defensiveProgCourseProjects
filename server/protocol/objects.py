@@ -2,7 +2,6 @@ import struct
 from logs import logger
 class Request:
     header_format = "<16sBHI"
-    request_header_length = 23 # bytes
 
     def __init__(self, client_id, version, code, payload_size, payload):
         self.cid = client_id
@@ -47,3 +46,21 @@ class Response:
     
     def __str__(self) -> str:
         return f"Response - version={self.server_version}, response_code={self.code}, payload_size={self.payload_size}, payload={self.payload}"
+    
+
+class Message:
+    message_header_format = "<16s4sBI"
+    def __init__(self, client_id, message_bytes) -> None:
+        self.from_client_id = client_id
+        self.message_id = b'\x11\x12\x13\x14'
+        self.message_type = 1
+        self.message_size = 11
+        self.messsage_content = b'Hello World'
+    
+    def to_bytes(self):
+        return struct.pack(Message.message_header_format, self.from_client_id, self.message_id, self.message_type, self.message_size) + self.messsage_content
+    def __str__(self):
+        return f"Message - from={self.from_client_id}, messae_id={self.message_id}"
+    
+    def __repr__(self) -> str:
+        return self.__str__()

@@ -1,7 +1,7 @@
 from utils import get_server_port
 from logs import Logger
 from user import User
-from protocol import Request, Response
+from protocol import Request, Response, Message
 from config import DEFAULT_SERVER_HOST, SERVER_VERSION
 import socket 
 from protocol import Codes
@@ -65,10 +65,19 @@ def handle_request(request, conn):
             response = Response(SERVER_VERSION, Codes.GET_PUBLIC_KEY_RESPONSE_CODE, len(response_payload), response_payload)
         
         case Codes.SEND_MESSEGE_REQUEST_CODE:
-            response = Response(SERVER_VERSION, Codes.SEND_MESSEGE_RESPONSE_CODE, 0, None)
+            client_id = request.cid
+            target_client_id = request.payload[0:16]
+            message = Message(client_id, request.payload[16:])
+            clients[target_client_id].unread_messages.append(message)
+            print("Updated user: ", clients[target_client_id])
+            payload = target_client_id + message.message_id
+            response = Response(SERVER_VERSION, Codes.SEND_MESSEGE_RESPONSE_CODE, len(payload), payload)
         
         case Codes.GET_MESSEGES_REQUEST_CODE:
-            response = Response(SERVER_VERSION, Codes.GET_MESSEGES_RESPONSE_CODE, 0, None)
+            client_id = request.cid
+            messages = b''.join([message.to_bytes() for message in clients[client_id].unread_messages])
+            response = Response(SERVER_VERSION, Codes.GET_MESSEGES_RESPONSE_CODE, len(messages), messages)
+            clients[client_id].unread_messages.clear()
         case _:
             response = Response(1, 9000, 0, None)
     
