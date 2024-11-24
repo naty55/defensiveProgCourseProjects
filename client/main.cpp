@@ -95,19 +95,45 @@ void handle_command(std::string &line, char client_id[HEADER_CLIENT_ID_SIZE]) {
         case 130: {
             Request req(client_id, 1, 602, (unsigned long int) 0, nullptr);
             res = send_request(req);
-            break;
+            break; 
         }
         case 140: {
-            break;
+            Request req(client_id, 1, 604, (unsigned long int) 0, nullptr);
+            res = send_request(req);
+            char * res_payload = res.get()->getPayload();
+            printBytes(res_payload, res.get()->getPayloadSize());
+            break; 
         }
         case 150: {
-
+            Message message(client_id, 3, 12, "Hello World");
+            unsigned char buffer[message.size_in_bytes()] = {0};
+            message.to_bytes(buffer, message.size_in_bytes());
+            Request req(client_id, 1, 603, (unsigned long int) message.size_in_bytes(), buffer);
+            res = send_request(req);
+            char * res_payload = res.get()->getPayload();
+            printBytes(res_payload, res.get()->getPayloadSize());
+            break;
         }
         case 151: {
+            Message message(client_id, 1, 0, nullptr);
+            unsigned char buffer[message.size_in_bytes()] = {0};
+            message.to_bytes(buffer, message.size_in_bytes());
+            Request req(client_id, 1, 603, (unsigned long int) message.size_in_bytes(), buffer);
+            res = send_request(req);
+            char * res_payload = res.get()->getPayload();
+            printBytes(res_payload, res.get()->getPayloadSize());
+            break;
 
         }
         case 152: {
-
+            Message message(client_id, 1, 0, nullptr);
+            unsigned char buffer[message.size_in_bytes()] = {0};
+            message.to_bytes(buffer, message.size_in_bytes());
+            Request req(client_id, 1, 603, (unsigned long int) message.size_in_bytes(), buffer);
+            res = send_request(req);
+            char * res_payload = res.get()->getPayload();
+            printBytes(res_payload, res.get()->getPayloadSize());
+            break;
         }
         case 0: {
             exit(0);
