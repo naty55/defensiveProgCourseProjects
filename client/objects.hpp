@@ -39,4 +39,23 @@ class Response {
     friend std::ostream& operator<<(std::ostream& os, const Response& response);
 };
 
+
+class Message {
+    private: 
+    char target_client_id[HEADER_CLIENT_ID_SIZE];
+    unsigned char message_type;
+    unsigned long int content_size;
+    std::vector<char> message_content;
+    public:
+    Message(
+        char target_client_id[HEADER_CLIENT_ID_SIZE],
+        unsigned char message_type,
+        unsigned long int content_size,
+        char message_content[]);
+    void to_bytes(unsigned char* buffer, size_t size);
+    size_t size_in_bytes();        
+    friend std::ostream& operator<<(std::ostream& os, const Message& message);
+};
+
+
 #endif

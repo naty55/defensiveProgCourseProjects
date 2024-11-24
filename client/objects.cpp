@@ -102,3 +102,42 @@ std::ostream &operator<<(std::ostream &os, const Response &response)
     os << "Response - server_version=" << std::dec << response.server_version << ", response_code=" << std::dec << response.response_code << ", payload_size=" << std::dec << response.payload_size;
     return os;
 }
+
+Message::Message(
+    char target_client_id[HEADER_CLIENT_ID_SIZE],
+    unsigned char message_type,
+    unsigned long int content_size,
+    char message_content[]) {
+        std::memcpy(this->target_client_id, target_client_id, HEADER_CLIENT_ID_SIZE);
+        this->message_type = message_type;
+        this->content_size = content_size;
+        if (message_content != nullptr) {
+            this->message_content.assign(message_content, message_content + content_size);
+        }
+}
+
+void Message::to_bytes(unsigned char *buffer, size_t size) {
+    size_t offset = 0;
+    std::memcpy(buffer, target_client_id, HEADER_CLIENT_ID_SIZE);
+    offset += HEADER_CLIENT_ID_SIZE;
+
+    char message_type[1] = {this->message_type};
+    std::memcpy(buffer + offset, message_type, 1);
+    offset += 1;
+
+    char content_size_[4] = {0};
+    convert_value_to_bytes(this->content_size, content_size_, 4);
+    std::memcpy(buffer + offset,  content_size_, 4);
+    offset += 4;
+
+    std::memcpy(buffer + offset, message_content.data(), this->content_size);
+}
+
+size_t Message::size_in_bytes() {
+    return HEADER_CLIENT_ID_SIZE + 1 + 4 + this->content_size;
+}
+
+std::ostream& operator<<(std::ostream& os, const Message& message) {
+    os << "Messsage - ";
+    return os;
+}
