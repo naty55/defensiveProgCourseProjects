@@ -41,21 +41,27 @@ class Response:
         self.code = response_code
         self.payload_size = payload_size
         self.payload = payload
+    
     def to_bytes(self):
         return struct.pack(self.header_format, self.server_version, self.code, self.payload_size) + (self.payload if self.payload != None else b'')
     
     def __str__(self) -> str:
         return f"Response - version={self.server_version}, response_code={self.code}, payload_size={self.payload_size}, payload={self.payload}"
     
+    def error_response(server_version):
+        return Response(server_version, 9000, 0, None)
+    
 
 class Message:
     message_header_format = "<16s4sBI"
     def __init__(self, client_id, message_bytes) -> None:
         self.from_client_id = client_id
-        self.message_id = b'\x11\x12\x13\x14'
-        self.message_type = 1
-        self.message_size = 11
-        self.messsage_content = b'Hello World'
+        self.message_id = Message.generate_msg_id()
+        self.message_type = message_bytes[0]
+        self.message_size = struct.unpack("<I", message_bytes[1:5])[0] 
+        self.messsage_content = message_bytes[5:]
+        if len(self.messsage_content) != self.message_size:
+            raise Exception("Invalid message")
     
     def to_bytes(self):
         return struct.pack(Message.message_header_format, self.from_client_id, self.message_id, self.message_type, self.message_size) + self.messsage_content
@@ -64,3 +70,7 @@ class Message:
     
     def __repr__(self) -> str:
         return self.__str__()
+    
+    @staticmethod
+    def generate_msg_id():
+        return b'\x11\x12\x13\x14'

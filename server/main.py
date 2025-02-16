@@ -24,21 +24,23 @@ def main():
         s.listen()
         while True:
             conn, addr = s.accept()
-            with conn:
-                logger.debug(f"Connected by {addr}")
-                data = conn.recv(1024)
-                if len(data) >= Request.header_size():
-                    try:
-                        logger.debug(f"Request bytes={data}")
-                        request = Request.from_bytes(data)
-                        handle_request(request, conn)
-                    except Exception as e:
-                        logger.error(f"Got an error {e}")
-                        conn.sendall(Response(1, 9000, 0, None).to_bytes())
-                else:
-                    conn.sendall(Response(1, 9000, 0, None).to_bytes())
+            handle_connection(conn, addr)
                             
-                        
+
+def handle_connection(conn, addr):
+    with conn:
+        logger.debug(f"Connected by {addr}")
+        data = conn.recv(1024)
+        if len(data) >= Request.header_size():
+            try:
+                logger.debug(f"Request bytes={data}")
+                request = Request.from_bytes(data)
+                handle_request(request, conn)
+            except Exception as e:
+                logger.error(f"Got an error {e}")
+                conn.sendall(Response.error_response(SERVER_VERSION).to_bytes())
+        else:
+            conn.sendall(Response.error_response(SERVER_VERSION).to_bytes())
 
 def handle_request(request, conn):
     print("---Clients---", clients)
@@ -79,10 +81,12 @@ def handle_request(request, conn):
             response = Response(SERVER_VERSION, Codes.GET_MESSEGES_RESPONSE_CODE, len(messages), messages)
             clients[client_id].unread_messages.clear()
         case _:
-            response = Response(1, 9000, 0, None)
+            response = Response.error_response(SERVER_VERSION)
     
     logger.info(F"Sending Response {response}")
-    conn.sendall(response.to_bytes())
+    res_bytes = response.to_bytes()
+    print("Response bytes: ", res_bytes)
+    conn.sendall(res_bytes)
         
     
 
