@@ -4,19 +4,6 @@
 const unsigned short HEADER_CLIENT_ID_SIZE = 16;
 const unsigned short HEADER_CLIENT_NAME_SIZE = 255;
 const unsigned short HEADER_CLIENT_PUBLIC_KEY_SIZE = 160;
-const unsigned short HEADER_CLIENT_VERSION_SIZE = 1;
-const unsigned short HEADER_SERVER_VERSION_SIZE = 1;
-const unsigned short HEADER_REQUEST_CODE_SIZE = 2;
-const unsigned short HEADER_RESPONSE_CODE_SIZE = 2;
-const unsigned short HEADER_PAYLOAD_SIZE_SIZE = 4;
-const unsigned short HEADER_SIZE = HEADER_CLIENT_ID_SIZE +
-                                   HEADER_CLIENT_VERSION_SIZE + 
-                                   HEADER_REQUEST_CODE_SIZE + 
-                                   HEADER_PAYLOAD_SIZE_SIZE;
-
-
-
-
 
 
 enum RequestCode {
@@ -44,6 +31,7 @@ enum MessageType {
 };
 
 #pragma pack(push, 1)
+
 typedef struct RequestHeader {
     uint8_t client_id[HEADER_CLIENT_ID_SIZE];
     uint8_t client_version;
@@ -56,5 +44,14 @@ typedef struct ResponseHeader {
     uint16_t response_code;
     uint32_t payload_size;
 } ResponseHeader;
+
+
+typedef struct MessageHeader {
+    uint8_t to_client_id[HEADER_CLIENT_ID_SIZE];
+    uint8_t message_type;
+    uint32_t content_size;
+} MessageHeader;
+
+
 
 #pragma pack(pop)

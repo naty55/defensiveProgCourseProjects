@@ -1,61 +1,57 @@
-#ifndef OBJECTS_HPP
-#define OBJECT_HPP
-#include "config.hpp"
+#pragma once
+
+#include "protocol.hpp"
 #include <crtdefs.h>
 #include <ostream>
 #include <vector>
 
 class Request {
     private: 
-    char clientId[HEADER_CLIENT_ID_SIZE];
-    unsigned char client_version;
-    unsigned short int request_code;
-    unsigned long int payload_size;
-    std::vector<char> payload;
+    RequestHeader header;
+    std::vector<uint8_t> payload;
     public:
     Request(
-        char clientId[HEADER_CLIENT_ID_SIZE],
-        unsigned char client_version,
-        unsigned short int request_code,
+        const uint8_t * clientId,
+        uint8_t client_version,
+        RequestCode request_code,
         unsigned long int payload_size,
-        unsigned char *payload);
+        const uint8_t *payload);
     void to_bytes(char* buffer, size_t size);
     size_t size_in_bytes();
     friend std::ostream& operator<<(std::ostream& os, const Request& request);
 };
 
+// class RegisterRequest : public Request {
+//     public:
+//     RegisterRequest(unsigned char clientId[HEADER_CLIENT_ID_SIZE], unsigned char client_version, unsigned char client_name[HEADER_CLIENT_NAME_SIZE]);
+// };
+
 
 class Response {
     private: 
-    unsigned short int server_version;
-    unsigned short int response_code;
-    unsigned long int payload_size;
-    std::vector<char> payload;
+    ResponseHeader header;
+    std::vector<uint8_t> payload;
     public:
-    Response(char *response_bytes, size_t size);
+    Response(const uint8_t *response_bytes, size_t size);
     ~Response();
-    char* getPayload();
+    uint8_t *getPayload();
     size_t getPayloadSize();
+    unsigned short int getResponseCode();
     friend std::ostream& operator<<(std::ostream& os, const Response& response);
 };
 
 
 class Message {
     private: 
-    char target_client_id[HEADER_CLIENT_ID_SIZE];
-    unsigned char message_type;
-    unsigned long int content_size;
-    std::vector<char> message_content;
+    MessageHeader header;
+    std::string message_content;
     public:
     Message(
-        char target_client_id[HEADER_CLIENT_ID_SIZE],
-        unsigned char message_type,
-        unsigned long int content_size,
-        char message_content[]);
+        const uint8_t target_client_id[HEADER_CLIENT_ID_SIZE],
+        const uint8_t message_type,
+        const uint32_t content_size,
+        const std::string &content);
     void to_bytes(unsigned char* buffer, size_t size);
     size_t size_in_bytes();        
     friend std::ostream& operator<<(std::ostream& os, const Message& message);
 };
-
-
-#endif
