@@ -2,11 +2,14 @@
 #include <iostream>
 #include "config.hpp"
 #include "objects.hpp"
+#include "protocol.hpp"
+#include "client.hpp"
 #include <array>
+#include <string>
+#include <memory>
+#include "client_net.hpp"
 
-using boost::asio::ip::tcp;
-
-void printBytes(char data[], int data_size) {
+void printBytes(unsigned char data[], int data_size) {
         for (int i =0; i < data_size; i++) {
             unsigned char byte = data[i];
             std::cout << std::hex << (int)byte << " ";
@@ -15,64 +18,90 @@ void printBytes(char data[], int data_size) {
 }
 std::unique_ptr<Response> send_request(Request &request);
 void client_loop();
-void handle_command(std::string &line, char client_id[HEADER_CLIENT_ID_SIZE]);
+bool handle_command(std::string &line, Client& client);
 
 int main() {
     client_loop();
+    std::cout << "See you later!" << std::endl;
     return 0;
 }
 
 void client_loop(){
     bool running = true;
-    char client_id[HEADER_CLIENT_ID_SIZE] = {0};
+    Client client;
     while (running) {
         std::cout << CLIENT_MESSAGE << std::endl;
         std::string line; 
         std::getline(std::cin, line);
         std::cout<< line << "\n";
         try {
-            handle_command(line, client_id);
+            running = handle_command(line, client);
         } catch (const std::exception& e) {
             std::cout << "Caught a standard exception: " << e.what() << std::endl;
         } catch (...) {
             std::cout << "Caught an unknown exception." << std::endl;
         }
-        
     }
 }
 
-void handle_command(std::string &line, char client_id[HEADER_CLIENT_ID_SIZE]) {
+bool handle_command(std::string &line, Client& client) {
     int input_num = 0;
     try {
         input_num = std::stoi(line);
     } catch(...) {
         std::cout << "It's not you it's me - please select again" << std::endl;
+        return true;
     }
+
+    if (0 == input_num) {
+        std::cout << "Exiting" << std::endl;
+        return false;
+    }
+
+    if (!client.isRegistered() && input_num != 110) {
+        std::cout << "You need to register first" << std::endl;
+        return true;
+    }
+    
     std::unique_ptr<Response> res;
 
     switch (input_num) {
         case 110: {
-            client_id[HEADER_CLIENT_ID_SIZE] = {0};
-            unsigned char client_name[255] = "Hello";
-            unsigned char client_public_id[160] = "1111111111111111111111111111";
-            unsigned char payload[255 + 160] = {0};
-            std::memcpy(payload, client_name, 255);
-            std::memcpy(payload + 255, client_public_id, 160);
-            Request req(client_id, 1, 600, (unsigned long int) (255 + 160), payload);
+            std::string client_name;
+            while (client_name.size() + 1 > HEADER_CLIENT_NAME_SIZE || client_name.size() == 0) {
+                std::cout << "Please enter your name: ";
+                std::cin >> client_name;
+            }
+            unsigned char client_public_key[HEADER_CLIENT_PUBLIC_KEY_SIZE] = "1111111111111111111111111111";
+            unsigned char payload[HEADER_CLIENT_NAME_SIZE + HEADER_CLIENT_PUBLIC_KEY_SIZE] = {0};
+            std::memcpy(payload, client_name.c_str(), client_name.size());
+            std::memcpy(payload + HEADER_CLIENT_NAME_SIZE, client_public_key, HEADER_CLIENT_PUBLIC_KEY_SIZE);
+            Request req(client.getClientId(), 1, RequestCode::REQ_REGISTRATION, (unsigned long int) (HEADER_CLIENT_NAME_SIZE + HEADER_CLIENT_PUBLIC_KEY_SIZE), payload);
+            
             std::cout << "Request: " << req << std::endl;
             res = send_request(req);
-            char * res_payload = res.get()->getPayload();
+            std::cout << "Response: " << *res << std::endl;
+
+            if (res.get()->getResponseCode() != ResponseCode::RES_REGISTRATION) {
+                std::cout << "Failed to register" << std::endl;
+                break;
+            }
+            uint8_t * res_payload = res.get()->getPayload();
+            uint8_t client_id[HEADER_CLIENT_ID_SIZE] = {0};
             std::memcpy(client_id, res_payload, HEADER_CLIENT_ID_SIZE);
+            client.setClientId(client_id);
+            client.setClientName(client_name);
+            client.setRegistered(true);
             std::cout << "Registered! client_id=";
             printBytes(client_id, HEADER_CLIENT_ID_SIZE);
             std::cout << "client_name=" << client_name << std::endl;
             break;
         } 
         case 120: {
-            Request req(client_id, 1, 601, (unsigned long int) 0, nullptr);
+            Request req(client.getClientId(), 1, RequestCode::REQ_CLIENTS_LIST, (unsigned long int) 0, nullptr);
             std::cout << "Request: " << req << std::endl;
             res = send_request(req);
-            char * res_payload = res.get()->getPayload();
+            uint8_t * res_payload = res.get()->getPayload();
             int user_count = res.get()->getPayloadSize() / (16 + 255);
             if (res.get()->getPayloadSize() % (16 + 255)) {
                 std::cout << "Wrong size of payload" << std::endl;
@@ -82,8 +111,8 @@ void handle_command(std::string &line, char client_id[HEADER_CLIENT_ID_SIZE]) {
             std::cout << "Users:" << std::endl;
 
             for (int i=0; i < user_count; i++) {
-                char user_name[255] ={0}; 
-                char user_id[16] = {0};
+                char user_name[HEADER_CLIENT_NAME_SIZE] ={0}; 
+                char user_id[HEADER_CLIENT_ID_SIZE] = {0};
                 std::memcpy(user_id, res_payload + i * (16 + 255), 16);
                 std::memcpy(user_name, res_payload + i * (16 + 255) + 16, 255);
                 std::cout << "User: " << user_name << std::endl;
@@ -93,45 +122,49 @@ void handle_command(std::string &line, char client_id[HEADER_CLIENT_ID_SIZE]) {
 
         } 
         case 130: {
-            Request req(client_id, 1, 602, (unsigned long int) 0, nullptr);
+            uint8_t target_client_id[HEADER_CLIENT_ID_SIZE] = "12345";
+            Request req(client.getClientId(), 1, RequestCode::REQ_PUBLIC_KEY, (unsigned long int) HEADER_CLIENT_ID_SIZE, target_client_id);
             res = send_request(req);
             break; 
         }
         case 140: {
-            Request req(client_id, 1, 604, (unsigned long int) 0, nullptr);
+            Request req(client.getClientId(), 1, RequestCode::REQ_PENDING_MSGS, (unsigned long int) 0, nullptr);
             res = send_request(req);
-            char * res_payload = res.get()->getPayload();
+            uint8_t * res_payload = res.get()->getPayload();
             printBytes(res_payload, res.get()->getPayloadSize());
             break; 
         }
         case 150: {
-            Message message(client_id, 3, 12, "Hello World");
-            unsigned char buffer[message.size_in_bytes()] = {0};
+            uint8_t to_client_id[HEADER_CLIENT_ID_SIZE] = {0};
+            Message message(to_client_id, MessageType::MSG_TEXT, 12, "Hello World");
+            uint8_t buffer[message.size_in_bytes()] = {0};
             message.to_bytes(buffer, message.size_in_bytes());
-            Request req(client_id, 1, 603, (unsigned long int) message.size_in_bytes(), buffer);
+            Request req(client.getClientId(), 1, RequestCode::REQ_SEND_MSG, (unsigned long int) message.size_in_bytes(), buffer);
             res = send_request(req);
-            char * res_payload = res.get()->getPayload();
+            uint8_t * res_payload = res.get()->getPayload();
             printBytes(res_payload, res.get()->getPayloadSize());
             break;
         }
         case 151: {
-            Message message(client_id, 1, 0, nullptr);
-            unsigned char buffer[message.size_in_bytes()] = {0};
+            unsigned char to_client_id[HEADER_CLIENT_ID_SIZE] = {0};
+            Message message(to_client_id, MessageType::MSG_SYMMETRIC_KEY_REQUEST, 0, nullptr);
+            uint8_t buffer[message.size_in_bytes()] = {0};
             message.to_bytes(buffer, message.size_in_bytes());
-            Request req(client_id, 1, 603, (unsigned long int) message.size_in_bytes(), buffer);
+            Request req(client.getClientId(), 1, RequestCode::REQ_SEND_MSG, (unsigned long int) message.size_in_bytes(), buffer);
             res = send_request(req);
-            char * res_payload = res.get()->getPayload();
+            uint8_t* res_payload = res.get()->getPayload();
             printBytes(res_payload, res.get()->getPayloadSize());
             break;
 
         }
         case 152: {
-            Message message(client_id, 1, 0, nullptr);
-            unsigned char buffer[message.size_in_bytes()] = {0};
+            uint8_t to_client_id[HEADER_CLIENT_ID_SIZE] = {0};
+            Message message(to_client_id, MessageType::MSG_SYMMETRIC_KEY_SEND, 0, nullptr);
+            uint8_t buffer[message.size_in_bytes()] = {0};
             message.to_bytes(buffer, message.size_in_bytes());
-            Request req(client_id, 1, 603, (unsigned long int) message.size_in_bytes(), buffer);
+            Request req(client.getClientId(), 1, RequestCode::REQ_SEND_MSG, (unsigned long int) message.size_in_bytes(), buffer);
             res = send_request(req);
-            char * res_payload = res.get()->getPayload();
+            uint8_t * res_payload = res.get()->getPayload();
             printBytes(res_payload, res.get()->getPayloadSize());
             break;
         }
@@ -142,34 +175,5 @@ void handle_command(std::string &line, char client_id[HEADER_CLIENT_ID_SIZE]) {
             break;
         }
     }
-    std::cout << "Response: " <<  *res.get() << std::endl;
-    std::cout << "Done" << std::endl;
-
-}
-
-std::unique_ptr<Response> send_request(Request &request) {
-    boost::asio::io_context io_context;
-    tcp::resolver resolver(io_context);
-    auto endpoint = resolver.resolve(SERVER_HOST, SERVER_PORT);
-    tcp::socket s(io_context);
-    boost::system::error_code error;
-    boost::asio::connect(s, endpoint);
-    size_t request_size = request.size_in_bytes();
-    char buffer[BUFFER_SIZE] = {0};
-    request.to_bytes(buffer, BUFFER_SIZE);
-    boost::asio::write(s, boost::asio::buffer(buffer, request_size), error);
-    if (error) {
-        std::cout << error.message() << std::endl;
-    }
-    std::array<char, BUFFER_SIZE> response_buffer;
-    size_t len = s.read_some(boost::asio::buffer(response_buffer), error);
-    if( error && error != boost::asio::error::eof ) {
-            std::cout << "receive failed: " << error.message() << std::endl;
-    }
-    else {
-        char* data = response_buffer.data();
-        s.close();
-        return std::make_unique<Response>(data, len);
-    }
-    return nullptr;
+    return true;
 }
