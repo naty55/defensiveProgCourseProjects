@@ -5,7 +5,8 @@
 #include <iostream>
 
 Client::Client() {
-    rsapriv.getPublicKey(_clientPublicKey, RSAPublicWrapper::KEYSIZE);
+    auto pk = rsapriv.getPublicKey();
+    std::memcpy(_clientPublicKey, pk.c_str(), HEADER_CLIENT_PUBLIC_KEY_SIZE);
 }
 
 Client::Client(std::string &filename) {
