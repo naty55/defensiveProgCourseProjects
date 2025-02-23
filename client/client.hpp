@@ -1,5 +1,6 @@
 #pragma once
 #include "config.hpp"
+#include "RSAWrapper.hpp"
 #include "protocol.hpp"
 #include <unordered_map>
 #include <string>
@@ -18,10 +19,12 @@ class Client {
     uint8_t _clientId[HEADER_CLIENT_ID_SIZE] = {0};
     uint8_t _clientPublicKey[HEADER_CLIENT_PUBLIC_KEY_SIZE] = {0};
     bool _isRegistered = false;
+    RSAPrivateWrapper rsapriv;
     std::unordered_map<std::string, Peer> peers;
 
     public:
-    Client() = default;
+    Client();
+    Client(std::string &filename);
     void setClientId(const uint8_t (&clientId)[HEADER_CLIENT_ID_SIZE]);
     void setClientName(std::string &clientName);
     void setRegistered(bool isRegistered);

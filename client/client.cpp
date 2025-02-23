@@ -4,6 +4,14 @@
 #include <string>
 #include <iostream>
 
+Client::Client() {
+    rsapriv.getPublicKey(_clientPublicKey, RSAPublicWrapper::KEYSIZE);
+}
+
+Client::Client(std::string &filename) {
+
+}
+
 void Client::setClientId(const uint8_t (&clientId)[HEADER_CLIENT_ID_SIZE]) {
     std::memcpy(_clientId, clientId, HEADER_CLIENT_ID_SIZE);
 }
