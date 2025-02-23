@@ -13,12 +13,12 @@ class Request:
     def __str__(self):
         return f"[Request] client_id={self.cid}, client_version={self.client_version}, code={self.req_code}, payload_size={self.payload_size}, payload={self.payload}"
 
-    @classmethod
-    def from_bytes(cls, req_bytes):
-        header_length = cls.header_size()
+    @staticmethod
+    def from_bytes(req_bytes):
+        header_length = Request.header_size()
         if len(req_bytes) < header_length:
             raise Exception("Invalid request")
-        client_id, client_version, req_code, payload_size = struct.unpack(cls.header_format, req_bytes[0:23])
+        client_id, client_version, req_code, payload_size = struct.unpack(Request.header_format, req_bytes[0:23])
         received_payload_size = len(req_bytes) - header_length
         if received_payload_size != payload_size:
             logger.warn(f"payload size={payload_size}, actual payload size = {received_payload_size}")
@@ -26,11 +26,11 @@ class Request:
         payload = None
         if payload_size > 0:
             payload = req_bytes[header_length:]
-        return cls(client_id, client_version, req_code, payload_size, payload)
+        return Request(client_id, client_version, req_code, payload_size, payload)
     
-    @classmethod
-    def header_size(cls):
-        return struct.calcsize(cls.header_format)
+    @staticmethod
+    def header_size():
+        return struct.calcsize(Request.header_format)
     
 
 
