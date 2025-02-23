@@ -100,7 +100,7 @@ bool handle_command(std::string &line, Client& client) {
                 std::cout << "Wrong size of payload" << std::endl;
                 raise;
             }
-            client.clearKnownPeers();
+            client.clearKnownPeers(); // Really?
 
             for (int i=0; i < user_count; i++) {
                 char user_name[HEADER_CLIENT_NAME_SIZE] ={0}; 
@@ -131,6 +131,7 @@ bool handle_command(std::string &line, Client& client) {
             std::memcpy(client_id_from_res, payload, HEADER_CLIENT_ID_SIZE);
             std::memcpy(client_public_key, payload + HEADER_CLIENT_ID_SIZE, HEADER_CLIENT_PUBLIC_KEY_SIZE);
             client.setPublicKey(peer_name, client_public_key);
+            std::cout << "Set public key for " << peer_name << "\n";
             break; 
         }
         case 140: {
@@ -141,8 +142,20 @@ bool handle_command(std::string &line, Client& client) {
             break; 
         }
         case 150: {
-            uint8_t to_client_id[HEADER_CLIENT_ID_SIZE] = {0};
-            Message message(to_client_id, MessageType::MSG_TEXT, 12, "Hello World");
+            std::cout << "Who do you want to talk today? ";
+            std::string peer_name; 
+            std::getline(std::cin, peer_name);
+            if (!client.is_peer_known(peer_name)) {
+                std::cout << "Client is not in list - please request all peers from server";
+                return true;
+            }
+
+            std::cout << "Please write your message ";
+            std::string str_message;
+            std::getline(std::cin, str_message);
+
+            const uint8_t *to_client_id = client.getClientIdOf(peer_name);
+            Message message(to_client_id, MessageType::MSG_TEXT, str_message.size(), str_message);
             uint8_t buffer[message.size_in_bytes()] = {0};
             message.to_bytes(buffer, message.size_in_bytes());
             Request req(client.getClientId(), 1, RequestCode::REQ_SEND_MSG, (unsigned long int) message.size_in_bytes(), buffer);
@@ -152,7 +165,14 @@ bool handle_command(std::string &line, Client& client) {
             break;
         }
         case 151: {
-            unsigned char to_client_id[HEADER_CLIENT_ID_SIZE] = {0};
+            std::cout << "Who do you want to ask for a symmetric key? ";
+            std::string peer_name;
+            std::getline(std::cin, peer_name);
+            if (!client.is_peer_known(peer_name)) {
+                std::cout << "Client is not in list - please request all peers from server";
+                return true;
+            }
+            const uint8_t *to_client_id = client.getClientIdOf(peer_name);
             Message message(to_client_id, MessageType::MSG_SYMMETRIC_KEY_REQUEST, 0, nullptr);
             uint8_t buffer[message.size_in_bytes()] = {0};
             message.to_bytes(buffer, message.size_in_bytes());
@@ -164,7 +184,15 @@ bool handle_command(std::string &line, Client& client) {
 
         }
         case 152: {
-            uint8_t to_client_id[HEADER_CLIENT_ID_SIZE] = {0};
+            std::cout << "Who do you want to send Symmetric key to? ";
+            std::string peer_name;
+            std::getline(std::cin, peer_name);
+            if (!client.is_peer_known(peer_name)) {
+                std::cout << "Client is not in list - please request all peers from server";
+                return true;
+            }
+
+            const uint8_t *to_client_id = client.getClientIdOf(peer_name);
             Message message(to_client_id, MessageType::MSG_SYMMETRIC_KEY_SEND, 0, nullptr);
             uint8_t buffer[message.size_in_bytes()] = {0};
             message.to_bytes(buffer, message.size_in_bytes());
@@ -172,6 +200,10 @@ bool handle_command(std::string &line, Client& client) {
             res = send_request(req);
             uint8_t * res_payload = res.get()->getPayload();
             printBytes(res_payload, res.get()->getPayloadSize());
+            break;
+        }
+        case 153: {
+            std::cout << "NOT SUPPORTED YET\n";
             break;
         }
         case 0: {
