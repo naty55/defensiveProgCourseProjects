@@ -3,21 +3,6 @@
 #include <cstring>
 #include <iostream>
 
-void convert_value_to_bytes(long val, char* buffer, short buffer_size){
-    for (size_t i = 0; i < buffer_size; i++) {
-        buffer[i] = (val >> (i * 8)) & 0xFF; 
-    }
-}
-
-unsigned long convert_bytes_to_value(const uint8_t *buffer, short offset, short buffer_size) {
-    unsigned long num = 0;
-    for (size_t i = 0; i < buffer_size; i++) {
-        unsigned char b = (buffer[offset + i]);
-        num |= (b << (i * 8));
-    }
-    return num;
-}
-
 Request::Request(
     const uint8_t *clientId,
     uint8_t client_version,
