@@ -42,7 +42,7 @@ def handle_connection(conn, addr):
         else:
             conn.sendall(Response.error_response(SERVER_VERSION).to_bytes())
 
-def handle_request(request, conn):
+def handle_request(request: Request, conn):
     print("---Clients---", clients)
     logger.info(f"Handling request {request}")
     code = request.req_code
@@ -57,7 +57,8 @@ def handle_request(request, conn):
             response = Response(SERVER_VERSION, Codes.REGISTER_RESPONSE_CODE, len(user.id.bytes), user.id.bytes)
         
         case Codes.LIST_CLIENT_REQUEST_CODE:
-            client_list = b''.join([id + clients[id].name for id in clients.keys()])
+            client_id = request.cid
+            client_list = b''.join([_id + clients[_id].name for _id in clients.keys() if _id != client_id])
             response = Response(SERVER_VERSION, Codes.LIST_CLIENT_RESPONSE_CODE, len(client_list), client_list)
         
         case Codes.GET_PUBLIC_KEY_REQUEST_CODE:
