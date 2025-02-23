@@ -6,17 +6,10 @@
 #include "client.hpp"
 #include <array>
 #include <string>
-#include <memory>
 #include "client_net.hpp"
+#include "utils.hpp"
 
-void printBytes(unsigned char data[], int data_size) {
-        for (int i =0; i < data_size; i++) {
-            unsigned char byte = data[i];
-            std::cout << std::hex << (int)byte << " ";
-        }
-        std::cout << std::hex << std::endl;
-}
-std::unique_ptr<Response> send_request(Request &request);
+
 void client_loop();
 bool handle_command(std::string &line, Client& client);
 
@@ -83,7 +76,7 @@ bool handle_command(std::string &line, Client& client) {
             std::cout << "Response: " << *res << std::endl;
 
             if (res.get()->getResponseCode() != ResponseCode::RES_REGISTRATION) {
-                std::cout << "Failed to register" << std::endl;
+                std::cout << "Failed to register, please try again" << std::endl;
                 break;
             }
             uint8_t * res_payload = res.get()->getPayload();
@@ -107,24 +100,37 @@ bool handle_command(std::string &line, Client& client) {
                 std::cout << "Wrong size of payload" << std::endl;
                 raise;
             }
-            std::cout << "Users count: " << user_count << std::endl; 
-            std::cout << "Users:" << std::endl;
+            client.clearKnownPeers();
 
             for (int i=0; i < user_count; i++) {
                 char user_name[HEADER_CLIENT_NAME_SIZE] ={0}; 
-                char user_id[HEADER_CLIENT_ID_SIZE] = {0};
+                uint8_t user_id[HEADER_CLIENT_ID_SIZE] = {0};
                 std::memcpy(user_id, res_payload + i * (16 + 255), 16);
                 std::memcpy(user_name, res_payload + i * (16 + 255) + 16, 255);
-                std::cout << "User: " << user_name << std::endl;
+                client.addPeer(std::string(user_name), user_id);
             }
+            client.printPeers();
             
             break;
 
         } 
         case 130: {
-            uint8_t target_client_id[HEADER_CLIENT_ID_SIZE] = "12345";
+            std::cout << "Whose public key do you want to request? ";
+            std::string peer_name;
+            std::getline(std::cin, peer_name);
+            if (!client.is_peer_known(peer_name)) {
+                std::cout << "Peer is not in list\n";
+                return true;
+            }
+            const uint8_t* target_client_id = client.getClientIdOf(peer_name);
             Request req(client.getClientId(), 1, RequestCode::REQ_PUBLIC_KEY, (unsigned long int) HEADER_CLIENT_ID_SIZE, target_client_id);
             res = send_request(req);
+            uint8_t * payload = res.get()->getPayload();
+            uint8_t client_id_from_res[HEADER_CLIENT_ID_SIZE];
+            uint8_t client_public_key[HEADER_CLIENT_PUBLIC_KEY_SIZE];
+            std::memcpy(client_id_from_res, payload, HEADER_CLIENT_ID_SIZE);
+            std::memcpy(client_public_key, payload + HEADER_CLIENT_ID_SIZE, HEADER_CLIENT_PUBLIC_KEY_SIZE);
+            client.setPublicKey(peer_name, client_public_key);
             break; 
         }
         case 140: {
