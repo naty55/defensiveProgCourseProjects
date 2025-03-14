@@ -1,3 +1,9 @@
 *.pyc
 *.exe
-.vscode/** 
+.vscode/**
+client/client/**
+client/packages/**
+client/x64/**
+client/.vs/** 
+.vs/**
+lib
