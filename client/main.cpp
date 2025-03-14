@@ -90,10 +90,8 @@ bool handle_command(std::string& line, Client& client) {
         break;
     }
     case 140: {
-        Request req(client.getClientId(), 1, RequestCode::REQ_PENDING_MSGS, (unsigned long int) 0, nullptr);
-        res = send_request(req);
-        uint8_t* res_payload = res.get()->getPayload();
-        printBytes(res_payload, res.get()->getPayloadSize());
+
+		client.requestPendingMessages();
         break;
     }
     case 150: {

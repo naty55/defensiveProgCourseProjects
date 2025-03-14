@@ -19,7 +19,7 @@ void Client::setClientId(const uint8_t (&clientId)[HEADER_CLIENT_ID_SIZE]) {
     std::memcpy(_clientId, clientId, HEADER_CLIENT_ID_SIZE);
 }
 
-void Client::setClientName(std::string &clientName) {
+void Client::setClientName(const std::string &clientName) {
     name = clientName;
 }
 
@@ -67,17 +67,17 @@ const uint8_t* Client::getClientIdOf(const std::string &peer_name) {
     return peers[peer_name].clientId;
 }
 
-void Client::setPublicKey(std::string &peer_name, const uint8_t public_key[HEADER_CLIENT_PUBLIC_KEY_SIZE]) {
+void Client::setPublicKey(const std::string &peer_name, const uint8_t public_key[HEADER_CLIENT_PUBLIC_KEY_SIZE]) {
     std::memcpy(peers[peer_name].publicKey, public_key, HEADER_CLIENT_PUBLIC_KEY_SIZE);
     peers[peer_name].isPublicKeySet = true;
 }
 
-void Client::setSymmetricKey(std::string& peer_name, const uint8_t symmetric_key[SYMMETRIC_KEY_SIZE]) {
+void Client::setSymmetricKey(const std::string& peer_name, const uint8_t symmetric_key[SYMMETRIC_KEY_SIZE]) {
     std::memcpy(peers[peer_name].symmetricKey, symmetric_key, SYMMETRIC_KEY_SIZE);
     peers[peer_name].isSymmetricKeySet = true;
 }
 
-bool Client::registerClient(std::string &client_name) {
+bool Client::registerClient(const std::string &client_name) {
     unsigned char payload[HEADER_CLIENT_NAME_SIZE + HEADER_CLIENT_PUBLIC_KEY_SIZE] = { 0 };
     std::memcpy(payload, client_name.c_str(), client_name.size());
     std::memcpy(payload + HEADER_CLIENT_NAME_SIZE, getPublicKeyOfSelf(), HEADER_CLIENT_PUBLIC_KEY_SIZE);
@@ -140,5 +140,24 @@ bool Client::requestPublicKey(const std::string& peer_name) {
     uint8_t client_public_key[HEADER_CLIENT_PUBLIC_KEY_SIZE];
     std::memcpy(client_id_from_res, payload, HEADER_CLIENT_ID_SIZE);
     std::memcpy(client_public_key, payload + HEADER_CLIENT_ID_SIZE, HEADER_CLIENT_PUBLIC_KEY_SIZE);
-    client.setPublicKey(peer_name, client_public_key);
+    setPublicKey(peer_name, client_public_key);
+}
+
+bool Client::requestPendingMessages() {
+    Request req(getClientId(), 1, RequestCode::REQ_PENDING_MSGS, (unsigned long int) 0, nullptr);
+    std::unique_ptr<Response> res = send_request(req);
+    uint8_t* res_payload = res.get()->getPayload();
+	size_t payload_size = res.get()->getPayloadSize();
+    //printBytes(res_payload, res.get()->getPayloadSize());
+    std::vector<uint8_t> payload_vector = std::vector(res_payload, res_payload + payload_size);
+
+    RecievedMessageHeader* ptr = reinterpret_cast<RecievedMessageHeader*>(res_payload);
+    while (ptr < ptr + payload_size) {
+        size_t size_of_next_message = ptr->content_size + sizeof(RecievedMessageHeader);
+        std::vector<uint8_t> message_bytes = std::vector(res_payload, res_payload + size_of_next_message);
+        ReceivedMessage msg(message_bytes.data(), payload_size);
+        std::cout << msg << '\n';
+        ptr += size_of_next_message;
+    }
+    return true;
 }

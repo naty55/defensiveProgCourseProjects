@@ -97,3 +97,33 @@ std::ostream& operator<<(std::ostream& os, const Message& message) {
     os << "Messsage - type: " << message.header.message_type << " content_size: " << message.header.content_size;
     return os;
 }
+
+ReceivedMessage::ReceivedMessage(const uint8_t* message_bytes, size_t size) {
+	std::memcpy(&header, message_bytes, sizeof(header));
+	this->message_content.assign(message_bytes + sizeof(header), message_bytes + sizeof(header) + header.content_size);
+}
+
+const uint8_t* ReceivedMessage::getFromClientId() {
+    return header.from_client_id;
+}
+
+const uint8_t* ReceivedMessage::getMessageId() {
+    return header.message_id;
+}
+
+uint8_t ReceivedMessage::getMessageType() {
+	return header.message_type;
+}
+
+uint32_t ReceivedMessage::getContentSize() {
+    return header.content_size;
+}
+
+const std::string ReceivedMessage::getContent() {
+    return message_content;
+}
+
+std::ostream& operator<<(std::ostream& os, const ReceivedMessage& message) {
+    os << "Messsage - type: " << message.header.message_type << " content_size: " << message.header.content_size << " content: " << message.message_content;
+    return os;
+}

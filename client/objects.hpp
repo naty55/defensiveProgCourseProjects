@@ -6,10 +6,10 @@
 #include <vector>
 
 class Request {
-    private: 
+private: 
     RequestHeader header;
     std::vector<uint8_t> payload;
-    public:
+public:
     Request(
         const uint8_t * clientId,
         uint8_t client_version,
@@ -28,10 +28,10 @@ class Request {
 
 
 class Response {
-    private: 
+private: 
     ResponseHeader header;
     std::vector<uint8_t> payload;
-    public:
+public:
     Response(const uint8_t *response_bytes, size_t size);
     ~Response();
     uint8_t *getPayload();
@@ -42,10 +42,10 @@ class Response {
 
 
 class Message {
-    private: 
+private: 
     MessageHeader header;
     std::string message_content;
-    public:
+public:
     Message(
         const uint8_t target_client_id[HEADER_CLIENT_ID_SIZE],
         const uint8_t message_type,
@@ -54,4 +54,19 @@ class Message {
     void to_bytes(unsigned char* buffer, size_t size);
     size_t size_in_bytes();        
     friend std::ostream& operator<<(std::ostream& os, const Message& message);
+};
+
+
+class ReceivedMessage {
+private:
+    RecievedMessageHeader header;
+	std::string message_content;
+public:
+	ReceivedMessage(const uint8_t* response_bytes, size_t size);
+	const uint8_t* getFromClientId();
+	const uint8_t* getMessageId();
+	uint8_t getMessageType();
+	uint32_t getContentSize();
+	const std::string getContent();
+    friend std::ostream& operator<<(std::ostream& os, const ReceivedMessage& message);
 };

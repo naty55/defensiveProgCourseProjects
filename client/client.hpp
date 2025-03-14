@@ -27,7 +27,7 @@ class Client {
     Client();
     Client(std::string &filename);
     void setClientId(const uint8_t (&clientId)[HEADER_CLIENT_ID_SIZE]);
-    void setClientName(std::string &clientName);
+    void setClientName(const std::string &clientName);
     void setRegistered(bool isRegistered);
     bool isRegistered();
     const uint8_t* getClientId();
@@ -35,11 +35,12 @@ class Client {
     void clearKnownPeers ();
     void addPeer(const std::string &name, const uint8_t clientId[HEADER_CLIENT_ID_SIZE]);
     void printPeers();
-    const uint8_t* getClientIdOf(std::string &peer_name);
+    const uint8_t* getClientIdOf(const std::string &peer_name);
     bool is_peer_known(const std::string &peer_name);
     void setPublicKey(const std::string &peer_name, const uint8_t public_key[HEADER_CLIENT_PUBLIC_KEY_SIZE]);
-    void setSymmetricKey(std::string& peer_name, const uint8_t symmetric_key[SYMMETRIC_KEY_SIZE]);
-	bool registerClient(std::string& client_name);
+    void setSymmetricKey(const std::string& peer_name, const uint8_t symmetric_key[SYMMETRIC_KEY_SIZE]);
+	bool registerClient(const std::string& client_name);
     bool getPeers();
 	bool requestPublicKey(const std::string& peer_name);
+	bool requestPendingMessages();
 };
