@@ -7,7 +7,7 @@
  * 
  */
 
-#include "AESWrapper.h"
+#include "AESWrapper.hpp"
 
 #include <modes.h>
 #include <aes.h>

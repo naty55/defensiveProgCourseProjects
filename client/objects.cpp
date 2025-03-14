@@ -24,7 +24,7 @@ void Request::to_bytes(char * buffer, size_t size)
     if (size < size_in_bytes()) {
         std::cout << "Buffer size is less than the size of the request" << std::endl;
         std::cout << "Buffer size: " << size << std::endl;
-        raise;
+        return;
     }
     std::memcpy(buffer, &header, sizeof(header));
     std::memcpy(buffer + sizeof(header),  this->payload.data(), header.payload_size);
@@ -83,7 +83,7 @@ void Message::to_bytes(unsigned char *buffer, size_t size) {
     if (size < size_in_bytes()) {
         std::cout << "Buffer size is less than the size of the message" << std::endl;
         std::cout << "Buffer size: " << size << std::endl;
-        raise;
+        throw;
     }
     std::memcpy(buffer, &header, sizeof(header));
     std::memcpy(buffer + sizeof(header), message_content.data(), header.content_size);
