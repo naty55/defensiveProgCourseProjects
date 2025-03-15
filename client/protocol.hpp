@@ -1,9 +1,12 @@
 #pragma once
 #include <cstdint>
 
+// In bytes - as defined in protocol document
 const unsigned short HEADER_CLIENT_ID_SIZE = 16;
 const unsigned short HEADER_CLIENT_NAME_SIZE = 255;
 const unsigned short HEADER_CLIENT_PUBLIC_KEY_SIZE = 160;
+const unsigned short SYMMETRIC_KEY_SIZE = 16;
+const unsigned short HEADER_MESSAGE_ID_SIZE = 4;
 
 
 enum RequestCode {
@@ -52,6 +55,12 @@ typedef struct MessageHeader {
     uint32_t content_size;
 } MessageHeader;
 
+typedef struct RecievedMessageHeader {
+	uint8_t from_client_id[HEADER_CLIENT_ID_SIZE];
+	uint8_t message_id[HEADER_MESSAGE_ID_SIZE];
+	uint8_t message_type;
+	uint32_t content_size;
+} RecievedMessageHeader;
 
 
 #pragma pack(pop)

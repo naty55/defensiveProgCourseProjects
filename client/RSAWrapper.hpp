@@ -27,7 +27,7 @@ private:
 	CryptoPP::RSA::PublicKey _publicKey;
 
 	RSAPublicWrapper(const RSAPublicWrapper& rsapublic);
-	RSAPublicWrapper& operator=(const RSAPublicWrapper& rsapublic);
+	RSAPublicWrapper& operator=(const RSAPublicWrapper& rsapublic) = delete;
 public:
 
 	RSAPublicWrapper(const char* key, unsigned int length);
@@ -52,7 +52,7 @@ private:
 	CryptoPP::RSA::PrivateKey _privateKey;
 
 	RSAPrivateWrapper(const RSAPrivateWrapper& rsaprivate);
-	RSAPrivateWrapper& operator=(const RSAPrivateWrapper& rsaprivate);
+	RSAPrivateWrapper& operator=(const RSAPrivateWrapper& rsaprivate) = delete;
 public:
 	RSAPrivateWrapper();
 	RSAPrivateWrapper(const char* key, unsigned int length);

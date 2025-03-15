@@ -70,16 +70,15 @@ std::ostream &operator<<(std::ostream &os, const Response &response)
 Message::Message(
     const uint8_t target_client_id[HEADER_CLIENT_ID_SIZE],
     const uint8_t message_type,
-    const uint32_t content_size,
     const std::string &content) {
         std::memcpy(header.to_client_id, target_client_id, HEADER_CLIENT_ID_SIZE);
         header.message_type = message_type;
-        header.content_size = content_size;
+        header.content_size = content.size();
         this->message_content = content;
         
 }
 
-void Message::to_bytes(unsigned char *buffer, size_t size) {
+void Message::to_bytes(unsigned char *buffer, size_t size) const {
     if (size < size_in_bytes()) {
         std::cout << "Buffer size is less than the size of the message" << std::endl;
         std::cout << "Buffer size: " << size << std::endl;
@@ -89,7 +88,7 @@ void Message::to_bytes(unsigned char *buffer, size_t size) {
     std::memcpy(buffer + sizeof(header), message_content.data(), header.content_size);
 }
 
-size_t Message::size_in_bytes() {
+size_t Message::size_in_bytes() const {
     return sizeof(header) + header.content_size;
 }
 

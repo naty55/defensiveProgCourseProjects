@@ -49,10 +49,9 @@ public:
     Message(
         const uint8_t target_client_id[HEADER_CLIENT_ID_SIZE],
         const uint8_t message_type,
-        const uint32_t content_size,
         const std::string &content);
-    void to_bytes(unsigned char* buffer, size_t size);
-    size_t size_in_bytes();        
+    void to_bytes(unsigned char* buffer, size_t size) const;
+    size_t size_in_bytes() const;        
     friend std::ostream& operator<<(std::ostream& os, const Message& message);
 };
 

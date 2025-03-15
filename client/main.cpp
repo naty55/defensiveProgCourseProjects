@@ -12,6 +12,7 @@
 
 void client_loop();
 bool handle_command(std::string& line, Client& client);
+bool handle_message(ReceivedMessage& msg);
 
 int main() {
     client_loop();
@@ -42,6 +43,9 @@ void client_loop() {
 bool handle_command(std::string& line, Client& client) {
     int input_num = 0;
     try {
+		if (line.size() == 0) {
+			return true;
+		}
         input_num = std::stoi(line);
     }
     catch (...) {
@@ -49,12 +53,12 @@ bool handle_command(std::string& line, Client& client) {
         return true;
     }
 
-    if (0 == input_num) {
+    if (Commands::EXIT == input_num) {
         std::cout << "Exiting" << std::endl;
         return false;
     }
 
-    if (!client.isRegistered() && input_num != 110) {
+    if (!client.isRegistered() && input_num != Commands::REGISTER) {
         std::cout << "You need to register first" << std::endl;
         return true;
     }
@@ -62,7 +66,7 @@ bool handle_command(std::string& line, Client& client) {
     std::unique_ptr<Response> res;
 
     switch (input_num) {
-    case 110: {
+    case Commands::REGISTER: {
 		if (client.isRegistered()) {
 			std::cout << "You are already registered\n";
 			return true;
@@ -75,12 +79,12 @@ bool handle_command(std::string& line, Client& client) {
 		client.registerClient(client_name);
         break;
     }
-    case 120: {
+    case Commands::CLIENTS_LIST: {
         client.getPeers();
         client.printPeers();
         break;
     }
-    case 130: {
+    case Commands::PUBLIC_KEY: {
         std::cout << "Whose public key do you want to request? ";
         std::string peer_name;
         std::getline(std::cin, peer_name);
@@ -89,82 +93,84 @@ bool handle_command(std::string& line, Client& client) {
         }
         break;
     }
-    case 140: {
-
-		client.requestPendingMessages();
+    case Commands::PENDING_MSGS: {
+		std::vector<ReceivedMessage> messages;
+		bool result = client.requestPendingMessages(messages);
+		if (!result) {
+			std::cout << "Failed to get messages\n";
+			return true;
+		}
+		for (auto& msg : messages) {
+			handle_message(msg);
+		}
         break;
     }
-    case 150: {
+    case Commands::SEND_MSG: {
         std::cout << "Who do you want to talk today? ";
         std::string peer_name;
         std::getline(std::cin, peer_name);
-        if (!client.is_peer_known(peer_name)) {
-            std::cout << "Client is not in list - please request all peers from server";
-            return true;
-        }
-
         std::cout << "Please write your message ";
         std::string str_message;
         std::getline(std::cin, str_message);
-
-        const uint8_t* to_client_id = client.getClientIdOf(peer_name);
-        Message message(to_client_id, MessageType::MSG_TEXT, str_message.size(), str_message);
-        uint8_t buffer[5000] = { 0 };
-        message.to_bytes(buffer, message.size_in_bytes());
-        Request req(client.getClientId(), 1, RequestCode::REQ_SEND_MSG, (unsigned long int) message.size_in_bytes(), buffer);
-        res = send_request(req);
-        uint8_t* res_payload = res.get()->getPayload();
-        printBytes(res_payload, res.get()->getPayloadSize());
+		client.sendTextMessage(str_message, peer_name);
         break;
     }
-    case 151: {
+    case Commands::SYMMETRIC_KEY_REQUEST: {
         std::cout << "Who do you want to ask for a symmetric key? ";
         std::string peer_name;
         std::getline(std::cin, peer_name);
-        if (!client.is_peer_known(peer_name)) {
-            std::cout << "Client is not in list - please request all peers from server";
-            return true;
-        }
-        const uint8_t* to_client_id = client.getClientIdOf(peer_name);
-        Message message(to_client_id, MessageType::MSG_SYMMETRIC_KEY_REQUEST, 0, nullptr);
-        uint8_t buffer[5000] = { 0 };
-        message.to_bytes(buffer, message.size_in_bytes());
-        Request req(client.getClientId(), 1, RequestCode::REQ_SEND_MSG, (unsigned long int) message.size_in_bytes(), buffer);
-        res = send_request(req);
-        uint8_t* res_payload = res.get()->getPayload();
-        printBytes(res_payload, res.get()->getPayloadSize());
+		client.sendSymmetricKeyReqMessage(peer_name);
         break;
 
     }
-    case 152: {
+    case Commands::SYMMETRIC_KEY_SEND: {
         std::cout << "Who do you want to send Symmetric key to? ";
         std::string peer_name;
         std::getline(std::cin, peer_name);
-        if (!client.is_peer_known(peer_name)) {
-            std::cout << "Client is not in list - please request all peers from server";
-            return true;
-        }
-
-        const uint8_t* to_client_id = client.getClientIdOf(peer_name);
-        Message message(to_client_id, MessageType::MSG_SYMMETRIC_KEY_SEND, 0, nullptr);
-        uint8_t buffer[5000] = { 0 };
-        message.to_bytes(buffer, message.size_in_bytes());
-        Request req(client.getClientId(), 1, RequestCode::REQ_SEND_MSG, (unsigned long int) message.size_in_bytes(), buffer);
-        res = send_request(req);
-        uint8_t* res_payload = res.get()->getPayload();
-        printBytes(res_payload, res.get()->getPayloadSize());
+		client.sendSymmetricKeyMessage(peer_name);
         break;
     }
-    case 153: {
-        std::cout << "NOT SUPPORTED YET\n";
+    case Commands::FILE_MSG: {
+        std::cout << "Who do you want to send Symmetric key to? ";
+        std::string peer_name;
+        std::getline(std::cin, peer_name);
+        client.sendFileMessage("file content", peer_name);
         break;
-    }
-    case 0: {
-        exit(0);
+        break;
     }
     default: {
         break;
     }
     }
     return true;
+}
+
+bool handle_message(ReceivedMessage& msg) {
+
+    std::cout << "Handling message: " << msg << "\n";
+    MessageType type = (MessageType)msg.getMessageType();
+    switch (type) {
+    case MessageType::MSG_TEXT: {
+        std::cout << "Message from: " << msg.getFromClientId() << "\n";
+        std::cout << "Message: " << msg.getContent() << "\n";
+        break;
+    }
+	case MessageType::MSG_SYMMETRIC_KEY_REQUEST: {
+		std::cout << "Symmetric key request from: " << msg.getFromClientId() << "\n";
+		break;
+    }
+	case MessageType::MSG_SYMMETRIC_KEY_SEND: {
+		std::cout << "Symmetric key send from: " << msg.getFromClientId() << "\n";
+		break;
+	} case MessageType::MSG_FILE: {
+		std::cout << "File message from: " << msg.getFromClientId() << "\n";
+		break;
+	}
+	default: {
+		std::cout << "Unknown message type\n";
+		break;
+	}
+	}
+    std::cout << "----EOM----\n";
+	return true;
 }

@@ -1,9 +1,11 @@
 #pragma once
 #include "config.hpp"
 #include "RSAWrapper.hpp"
+#include "objects.hpp"
 #include "protocol.hpp"
 #include <unordered_map>
 #include <string>
+#include <vector>
 
 class Client {
     
@@ -22,6 +24,8 @@ class Client {
     bool _isRegistered = false;
     RSAPrivateWrapper rsapriv;
     std::unordered_map<std::string, Peer> peers;
+
+    bool sendMessage(const Message& message);
 
     public:
     Client();
@@ -42,5 +46,9 @@ class Client {
 	bool registerClient(const std::string& client_name);
     bool getPeers();
 	bool requestPublicKey(const std::string& peer_name);
-	bool requestPendingMessages();
+    bool requestPendingMessages(std::vector<ReceivedMessage> messages);
+    bool sendSymmetricKeyReqMessage(const std::string& peer_name);
+    bool sendSymmetricKeyMessage(const std::string& peer_name);
+    bool sendTextMessage(const std::string& message, const std::string& peer_name);
+    bool sendFileMessage(const std::string& message, const std::string& peer_name);
 };
