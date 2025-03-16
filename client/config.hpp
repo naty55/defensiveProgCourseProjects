@@ -22,4 +22,4 @@ enum Commands {
 	EXIT = 0
 };
 
-
+const uint8_t CLIENT_VERSION = 2;

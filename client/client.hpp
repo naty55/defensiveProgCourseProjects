@@ -11,21 +11,24 @@ class Client {
     
     typedef struct Peer {
         uint8_t clientId[HEADER_CLIENT_ID_SIZE] = {0};
-        uint8_t publicKey[HEADER_CLIENT_PUBLIC_KEY_SIZE] = {0};
+        char publicKey[HEADER_CLIENT_PUBLIC_KEY_SIZE] = {0};
         uint8_t symmetricKey[SYMMETRIC_KEY_SIZE] = { 0 };
         bool isPublicKeySet = false;
         bool isSymmetricKeySet = false;
+        bool askedForSymmetricKey = false;
     } Peer;
 
     private:
     std::string name;
     uint8_t _clientId[HEADER_CLIENT_ID_SIZE] = {0};
-    uint8_t _clientPublicKey[HEADER_CLIENT_PUBLIC_KEY_SIZE] = {0};
+    char _clientPublicKey[HEADER_CLIENT_PUBLIC_KEY_SIZE] = {0};
     bool _isRegistered = false;
     RSAPrivateWrapper rsapriv;
     std::unordered_map<std::string, Peer> peers;
 
     bool sendMessage(const Message& message);
+    bool handleMessage(const RecievedMessageHeader* header, const uint8_t* payload, std::vector<ReceivedMessage>& messages);
+    const std::string get_peer_by_client_id(const uint8_t[HEADER_CLIENT_ID_SIZE]) const;
 
     public:
     Client();
@@ -33,9 +36,9 @@ class Client {
     void setClientId(const uint8_t (&clientId)[HEADER_CLIENT_ID_SIZE]);
     void setClientName(const std::string &clientName);
     void setRegistered(bool isRegistered);
-    bool isRegistered();
+    bool isRegistered() const;
     const uint8_t* getClientId();
-    const uint8_t* getPublicKeyOfSelf();
+    const char* getPublicKeyOfSelf();
     void clearKnownPeers ();
     void addPeer(const std::string &name, const uint8_t clientId[HEADER_CLIENT_ID_SIZE]);
     void printPeers();

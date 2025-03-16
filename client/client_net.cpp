@@ -6,7 +6,7 @@
 
 using boost::asio::ip::tcp;
 
-void printBytes_(const uint8_t data[], int data_size) {
+static void printBytes_(const uint8_t data[], int data_size) {
     for (int i =0; i < data_size; i++) {
         uint8_t byte = data[i];
         std::cout << std::hex << (int)byte << " ";

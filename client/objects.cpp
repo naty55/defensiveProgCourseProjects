@@ -30,17 +30,13 @@ void Request::to_bytes(char * buffer, size_t size)
     std::memcpy(buffer + sizeof(header),  this->payload.data(), header.payload_size);
 }
 
-size_t Request::size_in_bytes(){
+size_t Request::size_in_bytes() const {
     return header.payload_size + sizeof(header);
 }
 
 Response::Response(const uint8_t *response_bytes, size_t size) {
     std::memcpy(&header, response_bytes, sizeof(header));
     this->payload.assign(response_bytes + sizeof(header), response_bytes + sizeof(header) + header.payload_size);
-}
-
-Response::~Response() {
-    std::cout << "DESTROYED" << std::endl;
 }
 
 uint8_t *Response::getPayload()
@@ -97,13 +93,15 @@ std::ostream& operator<<(std::ostream& os, const Message& message) {
     return os;
 }
 
-ReceivedMessage::ReceivedMessage(const uint8_t* message_bytes, size_t size) {
-	std::memcpy(&header, message_bytes, sizeof(header));
-	this->message_content.assign(message_bytes + sizeof(header), message_bytes + sizeof(header) + header.content_size);
+const uint8_t* ReceivedMessage::getClientId() {
+    return header.from_client_id;
 }
 
-const uint8_t* ReceivedMessage::getFromClientId() {
-    return header.from_client_id;
+ReceivedMessage::ReceivedMessage(const RecievedMessageHeader& header, const std::string from_client_name, const std::string message_content) {
+    this->header = header;
+    this->message_type = static_cast<MessageType>(header.message_type);
+    this->from_client_name = from_client_name;
+    this->message_display_string = message_content;
 }
 
 const uint8_t* ReceivedMessage::getMessageId() {
@@ -119,10 +117,10 @@ uint32_t ReceivedMessage::getContentSize() {
 }
 
 const std::string ReceivedMessage::getContent() {
-    return message_content;
+    return message_display_string;
 }
 
 std::ostream& operator<<(std::ostream& os, const ReceivedMessage& message) {
-    os << "Messsage - type: " << message.header.message_type << " content_size: " << message.header.content_size << " content: " << message.message_content;
+    os << "Messsage - type: " << message.header.message_type << " content_size: " << message.header.content_size << " content: " << message.message_display_string;
     return os;
 }

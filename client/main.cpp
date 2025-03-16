@@ -12,7 +12,6 @@
 
 void client_loop();
 bool handle_command(std::string& line, Client& client);
-bool handle_message(ReceivedMessage& msg);
 
 int main() {
     client_loop();
@@ -102,7 +101,8 @@ bool handle_command(std::string& line, Client& client) {
         std::cout << "Got " << messages.size() << " new messages\n";
         std::cout << "Messages: \n";
 		for (auto& msg : messages) {
-			handle_message(msg);
+            std::cout << msg << "\n";
+            std::cout << "----EOM----\n";
 		}
         break;
     }
@@ -144,34 +144,4 @@ bool handle_command(std::string& line, Client& client) {
     }
     }
     return true;
-}
-
-bool handle_message(ReceivedMessage& msg) {
-
-    std::cout << "Handling message: " << msg << "\n";
-    MessageType type = (MessageType)msg.getMessageType();
-    switch (type) {
-    case MessageType::MSG_TEXT: {
-        std::cout << "Message from: " << msg.getFromClientId() << "\n";
-        std::cout << "Message: " << msg.getContent() << "\n";
-        break;
-    }
-	case MessageType::MSG_SYMMETRIC_KEY_REQUEST: {
-		std::cout << "Symmetric key request from: " << msg.getFromClientId() << "\n";
-		break;
-    }
-	case MessageType::MSG_SYMMETRIC_KEY_SEND: {
-		std::cout << "Symmetric key send from: " << msg.getFromClientId() << "\n";
-		break;
-	} case MessageType::MSG_FILE: {
-		std::cout << "File message from: " << msg.getFromClientId() << "\n";
-		break;
-	}
-	default: {
-		std::cout << "Unknown message type\n";
-		break;
-	}
-	}
-    std::cout << "----EOM----\n";
-	return true;
 }

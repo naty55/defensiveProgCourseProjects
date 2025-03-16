@@ -28,5 +28,6 @@ public:
 	const unsigned char* getKey() const;
 
 	std::string encrypt(const char* plain, unsigned int length);
+	std::string encrypt(std::string plain);
 	std::string decrypt(const char* cipher, unsigned int length);
 };

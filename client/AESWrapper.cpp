@@ -60,6 +60,10 @@ std::string AESWrapper::encrypt(const char* plain, unsigned int length)
 	return cipher;
 }
 
+std::string AESWrapper::encrypt(std::string plain) {
+	return encrypt(plain.c_str(), plain.length());
+}
+
 
 std::string AESWrapper::decrypt(const char* cipher, unsigned int length)
 {

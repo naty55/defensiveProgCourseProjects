@@ -17,7 +17,7 @@ public:
         unsigned long int payload_size,
         const uint8_t *payload);
     void to_bytes(char* buffer, size_t size);
-    size_t size_in_bytes();
+    size_t size_in_bytes() const;
     friend std::ostream& operator<<(std::ostream& os, const Request& request);
 };
 
@@ -33,7 +33,7 @@ private:
     std::vector<uint8_t> payload;
 public:
     Response(const uint8_t *response_bytes, size_t size);
-    ~Response();
+    ~Response() = default;
     uint8_t *getPayload();
     size_t getPayloadSize();
     unsigned short int getResponseCode();
@@ -59,10 +59,13 @@ public:
 class ReceivedMessage {
 private:
     RecievedMessageHeader header;
-	std::string message_content;
+    MessageType message_type;
+    std::string from_client_name;
+	std::string message_display_string;
 public:
-	ReceivedMessage(const uint8_t* response_bytes, size_t size);
-	const uint8_t* getFromClientId();
+    ReceivedMessage(const RecievedMessageHeader& header, const std::string from_client_name, const std::string message_content);
+    const std::string getClientName();
+    const uint8_t* getClientId();
 	const uint8_t* getMessageId();
 	uint8_t getMessageType();
 	uint32_t getContentSize();
