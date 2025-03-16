@@ -29,7 +29,9 @@ void client_loop() {
         std::getline(std::cin, line);
         std::cout << line << "\n";
         try {
-            running = handle_command(line, client);
+            if (line.size() != 0) {
+                running = handle_command(line, client);
+            }
         }
         catch (const std::exception& e) {
             std::cout << "Caught a standard exception: " << e.what() << std::endl;
@@ -43,9 +45,6 @@ void client_loop() {
 bool handle_command(std::string& line, Client& client) {
     int input_num = 0;
     try {
-		if (line.size() == 0) {
-			return true;
-		}
         input_num = std::stoi(line);
     }
     catch (...) {
@@ -100,6 +99,8 @@ bool handle_command(std::string& line, Client& client) {
 			std::cout << "Failed to get messages\n";
 			return true;
 		}
+        std::cout << "Got " << messages.size() << " new messages\n";
+        std::cout << "Messages: \n";
 		for (auto& msg : messages) {
 			handle_message(msg);
 		}

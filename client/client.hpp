@@ -46,7 +46,7 @@ class Client {
 	bool registerClient(const std::string& client_name);
     bool getPeers();
 	bool requestPublicKey(const std::string& peer_name);
-    bool requestPendingMessages(std::vector<ReceivedMessage> messages);
+    bool requestPendingMessages(std::vector<ReceivedMessage>& messages);
     bool sendSymmetricKeyReqMessage(const std::string& peer_name);
     bool sendSymmetricKeyMessage(const std::string& peer_name);
     bool sendTextMessage(const std::string& message, const std::string& peer_name);

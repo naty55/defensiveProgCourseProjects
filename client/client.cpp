@@ -144,7 +144,7 @@ bool Client::requestPublicKey(const std::string& peer_name) {
     return true;
 }
 
-bool Client::requestPendingMessages(std::vector<ReceivedMessage> messages) {
+bool Client::requestPendingMessages(std::vector<ReceivedMessage>& messages) {
     Request req(getClientId(), 1, RequestCode::REQ_PENDING_MSGS, (unsigned long int) 0, nullptr);
     std::unique_ptr<Response> res = send_request(req);
     uint8_t* res_payload = res.get()->getPayload();
@@ -162,8 +162,7 @@ bool Client::requestPendingMessages(std::vector<ReceivedMessage> messages) {
             return false;
 		}
         std::vector<uint8_t> message_bytes = std::vector(res_payload, res_payload + size_of_next_message);
-        ReceivedMessage msg(message_bytes.data(), size_of_next_message);
-		messages.push_back(msg);
+		messages.emplace_back(message_bytes.data(), size_of_next_message);
         res_payload += size_of_next_message;
     }
     return true;
