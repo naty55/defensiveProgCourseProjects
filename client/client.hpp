@@ -29,6 +29,7 @@ class Client {
     bool sendMessage(const Message& message);
     bool handleMessage(const RecievedMessageHeader* header, const uint8_t* payload, std::vector<ReceivedMessage>& messages);
     const std::string get_peer_by_client_id(const uint8_t[HEADER_CLIENT_ID_SIZE]) const;
+    bool sendTextMessage(const std::string& message, const std::string& peer_name, bool isFile);
 
     public:
     Client();

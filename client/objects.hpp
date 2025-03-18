@@ -34,9 +34,9 @@ private:
 public:
     Response(const uint8_t *response_bytes, size_t size);
     ~Response() = default;
-    uint8_t *getPayload();
-    size_t getPayloadSize();
-    unsigned short int getResponseCode();
+    const uint8_t *getPayload() const;
+    size_t getPayloadSize() const ;
+    unsigned short int getResponseCode() const;
     friend std::ostream& operator<<(std::ostream& os, const Response& response);
 };
 
@@ -67,8 +67,8 @@ public:
     const std::string getClientName();
     const uint8_t* getClientId();
 	const uint8_t* getMessageId();
-	uint8_t getMessageType();
-	uint32_t getContentSize();
+	uint8_t getMessageType() const ;
+	uint32_t getContentSize() const;
 	const std::string getContent();
     friend std::ostream& operator<<(std::ostream& os, const ReceivedMessage& message);
 };

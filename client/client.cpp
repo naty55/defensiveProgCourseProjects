@@ -5,6 +5,7 @@
 #include <iostream>
 #include <memory>
 #include "client_net.hpp"
+#include "exceptions.hpp"
 #include "AESWrapper.hpp"
 
 Client::Client() {
@@ -73,7 +74,7 @@ void Client::setPublicKey(const std::string &peer_name, const uint8_t public_key
 }
 
 void Client::setSymmetricKey(const std::string& peer_name, const uint8_t symmetric_key[SYMMETRIC_KEY_SIZE]) {
-    std::memcpy(&peers[peer_name].symmetricKey, symmetric_key, SYMMETRIC_KEY_SIZE);
+    std::memcpy(peers[peer_name].symmetricKey, symmetric_key, SYMMETRIC_KEY_SIZE);
     peers[peer_name].isSymmetricKeySet = true;
 }
 
@@ -91,7 +92,7 @@ bool Client::registerClient(const std::string &client_name) {
         std::cout << "Failed to register, please try again" << std::endl;
         return false;
     }
-    uint8_t* res_payload = res.get()->getPayload();
+    const uint8_t* res_payload = res.get()->getPayload();
     uint8_t client_id[HEADER_CLIENT_ID_SIZE] = { 0 };
     std::memcpy(client_id, res_payload, HEADER_CLIENT_ID_SIZE);
     setClientId(client_id);
@@ -107,9 +108,10 @@ bool Client::getPeers() {
     Request req(getClientId(), CLIENT_VERSION, RequestCode::REQ_CLIENTS_LIST, (unsigned long int) 0, nullptr);
     std::cout << "Request: " << req << std::endl;
     std::unique_ptr<Response> res = send_request(req);
-    uint8_t* res_payload = res.get()->getPayload();
-    size_t user_count = res.get()->getPayloadSize() / (16 + 255);
-    if (res.get()->getPayloadSize() % (16 + 255)) {
+    const uint8_t* res_payload = res.get()->getPayload();
+	size_t peer_size = HEADER_CLIENT_ID_SIZE + HEADER_CLIENT_NAME_SIZE;
+    size_t user_count = res.get()->getPayloadSize() / peer_size;
+    if (res.get()->getPayloadSize() % peer_size) {
         std::cout << "Wrong size of payload" << std::endl;
         return false;
     }
@@ -135,7 +137,7 @@ bool Client::requestPublicKey(const std::string& peer_name) {
     const uint8_t* target_client_id = getClientIdOf(peer_name);
     Request req(getClientId(), CLIENT_VERSION, RequestCode::REQ_PUBLIC_KEY, (unsigned long int) HEADER_CLIENT_ID_SIZE, target_client_id);
     std::unique_ptr<Response> res = send_request(req);
-    uint8_t* payload = res.get()->getPayload();
+    const uint8_t* payload = res.get()->getPayload();
     uint8_t client_id_from_res[HEADER_CLIENT_ID_SIZE];
     uint8_t client_public_key[HEADER_CLIENT_PUBLIC_KEY_SIZE];
     std::memcpy(client_id_from_res, payload, HEADER_CLIENT_ID_SIZE);
@@ -147,15 +149,15 @@ bool Client::requestPublicKey(const std::string& peer_name) {
 bool Client::requestPendingMessages(std::vector<ReceivedMessage>& messages) {
     Request req(getClientId(), CLIENT_VERSION, RequestCode::REQ_PENDING_MSGS, (unsigned long int) 0, nullptr);
     std::unique_ptr<Response> res = send_request(req);
-    uint8_t* res_payload = res.get()->getPayload();
+    const uint8_t* res_payload = res.get()->getPayload();
 	size_t payload_size = res.get()->getPayloadSize();
 
 	if (payload_size == 0) {
 		return true;
 	}
-    uint8_t* res_payload_end = res_payload + payload_size;
+    const uint8_t* res_payload_end = res_payload + payload_size;
     while (res_payload < res_payload_end) {
-        RecievedMessageHeader* ptr = reinterpret_cast<RecievedMessageHeader*>(res_payload);
+        const RecievedMessageHeader* ptr = reinterpret_cast<const RecievedMessageHeader*>(res_payload);
         size_t size_of_next_message = ptr->content_size + sizeof(RecievedMessageHeader);
 		if (res_payload + size_of_next_message > res_payload_end) {
 			std::cout << "Wrong size of payload" << std::endl;
@@ -178,17 +180,11 @@ bool Client::handleMessage(const RecievedMessageHeader *header, const uint8_t *p
     }
     switch (message_type) {
     case MessageType::MSG_SYMMETRIC_KEY_REQUEST: {
-            display_string = "Symmetric Key request from ";
-			if (is_peer_known(peer_name)) {
-				display_string += peer_name;
-            }
-            else {
-                display_string += "unknown peer - ask for peer list";
-            }
+            display_string = "Request for symmetric key";
             break;
         }
     case MessageType::MSG_SYMMETRIC_KEY_SEND: {
-        display_string = "symmetric key received from " + peer_name;
+        display_string = "symmetric key received";
         if (peers[peer_name].askedForSymmetricKey) {
             std::string sk = rsapriv.decrypt(reinterpret_cast<const char*>(payload), static_cast<unsigned int>(content_size));
             setSymmetricKey(peer_name, reinterpret_cast<const uint8_t*>(sk.c_str()));
@@ -203,15 +199,25 @@ bool Client::handleMessage(const RecievedMessageHeader *header, const uint8_t *p
     case MessageType::MSG_FILE:
     case MessageType::MSG_TEXT: {
         if (!peers[peer_name].isSymmetricKeySet) {
-			std::cout << "Symmetric key is not set for " << peer_name << " - dropping message\n";
+			display_string = "can't decrypt message - symmetric key not found";
 			return false;
         }
-		AESWrapper aes(peers[peer_name].symmetricKey, SYMMETRIC_KEY_SIZE);
-        
-        display_string = aes.decrypt(reinterpret_cast<const char*>(payload), static_cast<unsigned int>(content_size));
-        if (message_type == MessageType::MSG_FILE) {
-			display_string = "File: " + display_string;
+        else {
+            AESWrapper aes(peers[peer_name].symmetricKey, SYMMETRIC_KEY_SIZE);
+            display_string = aes.decrypt(reinterpret_cast<const char*>(payload), static_cast<unsigned int>(content_size));
+            if (message_type == MessageType::MSG_FILE) {
+                try {
+                    std::string file_path = save_file_in_temp_directory(display_string, peer_name + "-temp.temp");
+                    display_string = "File saved to: " + file_path;
+                }
+                catch (const stringable_client_exception& e) {
+                    std::cout << e;
+                    return false;
+                }
+				
+            }
         }
+        
     }
 
     }
@@ -243,7 +249,7 @@ bool Client::sendMessage(const Message& message) {
     message.to_bytes(buffer, message.size_in_bytes());
     Request req(getClientId(), CLIENT_VERSION, RequestCode::REQ_SEND_MSG, (unsigned long int) message.size_in_bytes(), buffer);
     std::unique_ptr<Response> res = send_request(req);
-    uint8_t* res_payload = res.get()->getPayload();
+    const uint8_t* res_payload = res.get()->getPayload();
     printBytes(res_payload, res.get()->getPayloadSize());
     return true;
 }
@@ -281,7 +287,11 @@ bool Client::sendSymmetricKeyMessage(const std::string& peer_name) {
     return sendMessage(message);
 }
 
-bool Client::sendTextMessage(const std::string &message, const std::string &peer_name){
+bool Client::sendTextMessage(const std::string& message, const std::string& peer_name) {
+    return sendTextMessage(message, peer_name, false);
+}
+
+bool Client::sendTextMessage(const std::string &message, const std::string &peer_name, bool isFile){
     if (!is_peer_known(peer_name)) {
         std::cout << "Client is not in list - please request all peers from server\n";
         return false;
@@ -294,10 +304,11 @@ bool Client::sendTextMessage(const std::string &message, const std::string &peer
     const uint8_t* to_client_id = getClientIdOf(peer_name);
 	AESWrapper aes(peer.symmetricKey, SYMMETRIC_KEY_SIZE);
 	std::string encrypted_message = aes.encrypt(message);
-    Message message_obj(to_client_id, MessageType::MSG_TEXT, encrypted_message);
+    MessageType msg_type = isFile ? MessageType::MSG_FILE : MessageType::MSG_TEXT;
+    Message message_obj(to_client_id, msg_type, encrypted_message);
 	return sendMessage(message_obj);
 }
 
 bool Client::sendFileMessage(const std::string& file_content, const std::string& peer_name) {
-	return sendTextMessage(file_content, peer_name);
+	return sendTextMessage(file_content, peer_name, true);
 }

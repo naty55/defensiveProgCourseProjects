@@ -8,7 +8,7 @@
 #include <string>
 #include "client_net.hpp"
 #include "utils.hpp"
-
+#include "exceptions.hpp"
 
 void client_loop();
 bool handle_command(std::string& line, Client& client);
@@ -101,8 +101,7 @@ bool handle_command(std::string& line, Client& client) {
         std::cout << "Got " << messages.size() << " new messages\n";
         std::cout << "Messages: \n";
 		for (auto& msg : messages) {
-            std::cout << msg << "\n";
-            std::cout << "----EOM----\n";
+            std::cout << msg;
 		}
         break;
     }
@@ -132,10 +131,22 @@ bool handle_command(std::string& line, Client& client) {
         break;
     }
     case Commands::FILE_MSG: {
-        std::cout << "Who do you want to send Symmetric key to? ";
         std::string peer_name;
+        std::cout << "Who do you want to share file with? ";
         std::getline(std::cin, peer_name);
-        client.sendFileMessage("file content", peer_name);
+        std::cout << "Please enter a filename: ";
+        std::string file_name;
+        std::getline(std::cin, file_name);
+        try {
+            client.sendFileMessage(read_file(file_name), peer_name);
+		}
+        catch (const stringable_client_exception& e) {
+            std::cout << e;
+        }
+		catch (const std::exception& e) {
+			std::cout << "Unkonwn error ocurred: " <<  e.what() << std::endl;
+		}
+        
         break;
         break;
     }

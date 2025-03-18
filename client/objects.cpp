@@ -39,16 +39,15 @@ Response::Response(const uint8_t *response_bytes, size_t size) {
     this->payload.assign(response_bytes + sizeof(header), response_bytes + sizeof(header) + header.payload_size);
 }
 
-uint8_t *Response::getPayload()
-{
+const uint8_t *Response::getPayload() const {
     return this->payload.data();
 }
 
-size_t Response::getPayloadSize() {
+size_t Response::getPayloadSize() const {
     return this->header.payload_size;
 }
 
-uint16_t Response::getResponseCode() {
+uint16_t Response::getResponseCode() const {
     return header.response_code;
 }
 
@@ -69,7 +68,7 @@ Message::Message(
     const std::string &content) {
         std::memcpy(header.to_client_id, target_client_id, HEADER_CLIENT_ID_SIZE);
         header.message_type = message_type;
-        header.content_size = content.size();
+        header.content_size = static_cast<uint32_t>(content.size());
         this->message_content = content;
         
 }
@@ -104,15 +103,19 @@ ReceivedMessage::ReceivedMessage(const RecievedMessageHeader& header, const std:
     this->message_display_string = message_content;
 }
 
+const std::string ReceivedMessage::getClientName() {
+    return from_client_name;
+}
+
 const uint8_t* ReceivedMessage::getMessageId() {
     return header.message_id;
 }
 
-uint8_t ReceivedMessage::getMessageType() {
+uint8_t ReceivedMessage::getMessageType() const {
 	return header.message_type;
 }
 
-uint32_t ReceivedMessage::getContentSize() {
+uint32_t ReceivedMessage::getContentSize() const {
     return header.content_size;
 }
 
@@ -121,6 +124,6 @@ const std::string ReceivedMessage::getContent() {
 }
 
 std::ostream& operator<<(std::ostream& os, const ReceivedMessage& message) {
-    os << "Messsage - type: " << message.header.message_type << " content_size: " << message.header.content_size << " content: " << message.message_display_string;
+	os << "From: " << message.from_client_name << "\nContent: \n" << message.message_display_string << "\n----<EOM>----\n";
     return os;
 }
