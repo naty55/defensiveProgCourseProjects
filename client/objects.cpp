@@ -34,6 +34,10 @@ size_t Request::size_in_bytes() const {
     return header.payload_size + sizeof(header);
 }
 
+RequestCode Request::getRequestCode() const {
+    return RequestCode(header.request_code);
+}
+
 Response::Response(const uint8_t *response_bytes, size_t size) {
     std::memcpy(&header, response_bytes, sizeof(header));
     this->payload.assign(response_bytes + sizeof(header), response_bytes + sizeof(header) + header.payload_size);

@@ -83,15 +83,14 @@ bool Client::registerClient(const std::string &client_name) {
     std::memcpy(payload, client_name.c_str(), client_name.size());
     std::memcpy(payload + HEADER_CLIENT_NAME_SIZE, getPublicKeyOfSelf(), HEADER_CLIENT_PUBLIC_KEY_SIZE);
     Request req(getClientId(), CLIENT_VERSION, RequestCode::REQ_REGISTRATION, (unsigned long int) (HEADER_CLIENT_NAME_SIZE + HEADER_CLIENT_PUBLIC_KEY_SIZE), payload);
-
-    std::cout << "Request: " << req << std::endl;
-    std::unique_ptr<Response> res = send_request(req);
-    std::cout << "Response: " << *res << std::endl;
-
-    if (res.get()->getResponseCode() != ResponseCode::RES_REGISTRATION) {
-        std::cout << "Failed to register, please try again" << std::endl;
+    std::unique_ptr<Response> res;
+    try {
+        res = send_request(req, ResponseCode::RES_REGISTRATION);
+    } catch (stringable_client_exception& e) {
+        std::cout << e;
         return false;
     }
+
     const uint8_t* res_payload = res.get()->getPayload();
     uint8_t client_id[HEADER_CLIENT_ID_SIZE] = { 0 };
     std::memcpy(client_id, res_payload, HEADER_CLIENT_ID_SIZE);
@@ -106,11 +105,18 @@ bool Client::registerClient(const std::string &client_name) {
 
 bool Client::getPeers() {
     Request req(getClientId(), CLIENT_VERSION, RequestCode::REQ_CLIENTS_LIST, (unsigned long int) 0, nullptr);
-    std::cout << "Request: " << req << std::endl;
-    std::unique_ptr<Response> res = send_request(req);
+    std::unique_ptr<Response> res;
+    try {
+        res = send_request(req, ResponseCode::RES_USERS);
+    }
+    catch (stringable_client_exception& e) {
+        std::cout << e;
+        return false;
+    }
     const uint8_t* res_payload = res.get()->getPayload();
 	size_t peer_size = HEADER_CLIENT_ID_SIZE + HEADER_CLIENT_NAME_SIZE;
     size_t user_count = res.get()->getPayloadSize() / peer_size;
+
     if (res.get()->getPayloadSize() % peer_size) {
         std::cout << "Wrong size of payload" << std::endl;
         return false;
@@ -136,7 +142,14 @@ bool Client::requestPublicKey(const std::string& peer_name) {
 	}
     const uint8_t* target_client_id = getClientIdOf(peer_name);
     Request req(getClientId(), CLIENT_VERSION, RequestCode::REQ_PUBLIC_KEY, (unsigned long int) HEADER_CLIENT_ID_SIZE, target_client_id);
-    std::unique_ptr<Response> res = send_request(req);
+    std::unique_ptr<Response> res;
+    try {
+        res = send_request(req, ResponseCode::RES_PUBLIC_KEY);
+    }
+    catch (stringable_client_exception& e) {
+        std::cout << e;
+        return false;
+    }
     const uint8_t* payload = res.get()->getPayload();
     uint8_t client_id_from_res[HEADER_CLIENT_ID_SIZE];
     uint8_t client_public_key[HEADER_CLIENT_PUBLIC_KEY_SIZE];
@@ -148,7 +161,14 @@ bool Client::requestPublicKey(const std::string& peer_name) {
 
 bool Client::requestPendingMessages(std::vector<ReceivedMessage>& messages) {
     Request req(getClientId(), CLIENT_VERSION, RequestCode::REQ_PENDING_MSGS, (unsigned long int) 0, nullptr);
-    std::unique_ptr<Response> res = send_request(req);
+    std::unique_ptr<Response> res;
+    try {
+        res = send_request(req, ResponseCode::RES_PENDING_MSGS);
+    }
+    catch (stringable_client_exception& e) {
+        std::cout << e;
+        return false;
+    }
     const uint8_t* res_payload = res.get()->getPayload();
 	size_t payload_size = res.get()->getPayloadSize();
 
@@ -249,7 +269,14 @@ bool Client::sendMessage(const Message& message) {
     uint8_t buffer[5000] = { 0 };
     message.to_bytes(buffer, message.size_in_bytes());
     Request req(getClientId(), CLIENT_VERSION, RequestCode::REQ_SEND_MSG, (unsigned long int) message.size_in_bytes(), buffer);
-    std::unique_ptr<Response> res = send_request(req);
+    std::unique_ptr<Response> res;
+    try {
+        res = send_request(req, ResponseCode::RES_MSG_SENT);
+    }
+    catch (stringable_client_exception& e) {
+        std::cout << e;
+        return false;
+    }
     const uint8_t* res_payload = res.get()->getPayload();
     printBytes(res_payload, res.get()->getPayloadSize());
     return true;
