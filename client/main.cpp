@@ -25,18 +25,15 @@ void client_loop() {
     while (running) {
         std::cout << CLIENT_MESSAGE << std::endl;
         std::string line;
-        std::getline(std::cin, line);
-        std::cout << line << "\n";
         try {
-            if (line.size() != 0) {
-                running = handle_command(line, client);
+            while (line.size() == 0) {
+                std::getline(std::cin, line);
             }
+            running = handle_command(line, client);
+            line.clear();
         }
         catch (const std::exception& e) {
-            std::cout << "Caught a standard exception: " << e.what() << std::endl;
-        }
-        catch (...) {
-            std::cout << "Caught an unknown exception." << std::endl;
+            std::cout << "Error: " << e.what() << std::endl;
         }
     }
 }
@@ -60,8 +57,6 @@ bool handle_command(std::string& line, Client& client) {
         std::cout << "You need to register first" << std::endl;
         return true;
     }
-
-    std::unique_ptr<Response> res;
 
     switch (input_num) {
     case Commands::REGISTER: {
@@ -132,7 +127,7 @@ bool handle_command(std::string& line, Client& client) {
     }
     case Commands::FILE_MSG: {
         std::string peer_name;
-        std::cout << "Who do you want to share file with? ";
+        std::cout << "Who do you want to share a file with? ";
         std::getline(std::cin, peer_name);
         std::cout << "Please enter a filename: ";
         std::string file_name;

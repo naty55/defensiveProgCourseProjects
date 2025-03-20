@@ -6,15 +6,6 @@
 
 using boost::asio::ip::tcp;
 
-static void printBytes_(const uint8_t data[], int data_size) {
-    for (int i =0; i < data_size; i++) {
-        uint8_t byte = data[i];
-        std::cout << std::hex << (int)byte << " ";
-    }
-    std::cout << std::hex << std::endl;
-}
-
-
 std::unique_ptr<Response> send_request(Request &request) {
     boost::asio::io_context ctx;
     tcp::resolver resolver(ctx);
@@ -27,7 +18,7 @@ std::unique_ptr<Response> send_request(Request &request) {
     request.to_bytes(buffer, BUFFER_SIZE);
     boost::asio::write(s, boost::asio::buffer(buffer, request_size), error);
     if (error) {
-        std::cout << error.message() << std::endl;
+        std::cout <<  error.message() << std::endl;
     }
     std::array<uint8_t, BUFFER_SIZE> response_buffer;
     size_t len = s.read_some(boost::asio::buffer(response_buffer), error);
@@ -36,8 +27,6 @@ std::unique_ptr<Response> send_request(Request &request) {
     }
     else {
         const uint8_t* data = response_buffer.data();
-        std::cout << "response bytes: ";
-        printBytes_(data, len);
         s.close();
         return std::make_unique<Response>(data, len);
     }

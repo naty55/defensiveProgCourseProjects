@@ -207,7 +207,8 @@ bool Client::handleMessage(const RecievedMessageHeader *header, const uint8_t *p
             display_string = aes.decrypt(reinterpret_cast<const char*>(payload), static_cast<unsigned int>(content_size));
             if (message_type == MessageType::MSG_FILE) {
                 try {
-                    std::string file_path = save_file_in_temp_directory(display_string, peer_name + "-temp.temp");
+					std::string relative_path = get_timestamp() + "_" + bytes_to_hex_string(header->message_id, HEADER_MESSAGE_ID_SIZE);
+                    std::string file_path = save_file_in_temp_directory(display_string, relative_path);
                     display_string = "File saved to: " + file_path;
                 }
                 catch (const stringable_client_exception& e) {
