@@ -16,7 +16,7 @@ public:
         RequestCode request_code,
         unsigned long int payload_size,
         const uint8_t *payload);
-    void to_bytes(char* buffer, size_t size);
+    void to_bytes(std::vector<char> &buffer) const;
     size_t size_in_bytes() const;
 	RequestCode getRequestCode() const;
     friend std::ostream& operator<<(std::ostream& os, const Request& request);

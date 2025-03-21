@@ -85,7 +85,7 @@ bool Client::registerClient(const std::string &client_name) {
     Request req(getClientId(), CLIENT_VERSION, RequestCode::REQ_REGISTRATION, (unsigned long int) (HEADER_CLIENT_NAME_SIZE + HEADER_CLIENT_PUBLIC_KEY_SIZE), payload);
     std::unique_ptr<Response> res;
     try {
-        res = send_request(req, ResponseCode::RES_REGISTRATION);
+        res = send_request_and_get_response(req, ResponseCode::RES_REGISTRATION);
     } catch (stringable_client_exception& e) {
         std::cout << e;
         return false;
@@ -107,14 +107,14 @@ bool Client::getPeers() {
     Request req(getClientId(), CLIENT_VERSION, RequestCode::REQ_CLIENTS_LIST, (unsigned long int) 0, nullptr);
     std::unique_ptr<Response> res;
     try {
-        res = send_request(req, ResponseCode::RES_USERS);
+        res = send_request_and_get_response(req, ResponseCode::RES_USERS);
     }
     catch (stringable_client_exception& e) {
         std::cout << e;
         return false;
     }
     const uint8_t* res_payload = res.get()->getPayload();
-	size_t peer_size = HEADER_CLIENT_ID_SIZE + HEADER_CLIENT_NAME_SIZE;
+    size_t peer_size = static_cast<size_t>(HEADER_CLIENT_ID_SIZE) + HEADER_CLIENT_NAME_SIZE;
     size_t user_count = res.get()->getPayloadSize() / peer_size;
 
     if (res.get()->getPayloadSize() % peer_size) {
@@ -144,7 +144,7 @@ bool Client::requestPublicKey(const std::string& peer_name) {
     Request req(getClientId(), CLIENT_VERSION, RequestCode::REQ_PUBLIC_KEY, (unsigned long int) HEADER_CLIENT_ID_SIZE, target_client_id);
     std::unique_ptr<Response> res;
     try {
-        res = send_request(req, ResponseCode::RES_PUBLIC_KEY);
+        res = send_request_and_get_response(req, ResponseCode::RES_PUBLIC_KEY);
     }
     catch (stringable_client_exception& e) {
         std::cout << e;
@@ -163,7 +163,7 @@ bool Client::requestPendingMessages(std::vector<ReceivedMessage>& messages) {
     Request req(getClientId(), CLIENT_VERSION, RequestCode::REQ_PENDING_MSGS, (unsigned long int) 0, nullptr);
     std::unique_ptr<Response> res;
     try {
-        res = send_request(req, ResponseCode::RES_PENDING_MSGS);
+        res = send_request_and_get_response(req, ResponseCode::RES_PENDING_MSGS);
     }
     catch (stringable_client_exception& e) {
         std::cout << e;
@@ -271,7 +271,7 @@ bool Client::sendMessage(const Message& message) {
     Request req(getClientId(), CLIENT_VERSION, RequestCode::REQ_SEND_MSG, (unsigned long int) message.size_in_bytes(), buffer);
     std::unique_ptr<Response> res;
     try {
-        res = send_request(req, ResponseCode::RES_MSG_SENT);
+        res = send_request_and_get_response(req, ResponseCode::RES_MSG_SENT);
     }
     catch (stringable_client_exception& e) {
         std::cout << e;

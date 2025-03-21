@@ -19,15 +19,9 @@ Request::Request(
         }
 }
 
-void Request::to_bytes(char * buffer, size_t size)
-{   
-    if (size < size_in_bytes()) {
-        std::cout << "Buffer size is less than the size of the request" << std::endl;
-        std::cout << "Buffer size: " << size << std::endl;
-        return;
-    }
-    std::memcpy(buffer, &header, sizeof(header));
-    std::memcpy(buffer + sizeof(header),  this->payload.data(), header.payload_size);
+void Request::to_bytes(std::vector<char> &buffer) const {   
+    buffer.insert(buffer.begin(), reinterpret_cast<const char*>(&header), reinterpret_cast<const char*>(&header) + sizeof(header));
+    buffer.insert(buffer.begin() + sizeof(header), payload.data(), payload.data() + payload.size());
 }
 
 size_t Request::size_in_bytes() const {
