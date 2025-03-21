@@ -4,7 +4,7 @@ from user import User
 from protocol import Request, Response, Message
 from config import DEFAULT_SERVER_HOST, SERVER_VERSION
 import socket 
-from protocol import Codes
+from protocol import Codes, Sizes
 
 logger = Logger()
 
@@ -50,9 +50,11 @@ def handle_request(request: Request, conn):
     match code:
         case Codes.REGISTER_REQUEST_CODE:
             payload = request.payload
-            name = payload[:255]
-            public_key = payload[255:]
+            name = payload[:Sizes.CLIENT_NAME_SIZE]
+            public_key = payload[Sizes.CLIENT_NAME_SIZE:]
             user = User(name, public_key)
+            if user.name in [client.name for client in clients.values()]:
+                raise Exception(f"User with username {user.name} already exists")
             clients[user.id.bytes] = user
             response = Response(SERVER_VERSION, Codes.REGISTER_RESPONSE_CODE, len(user.id.bytes), user.id.bytes)
         
@@ -69,8 +71,8 @@ def handle_request(request: Request, conn):
         
         case Codes.SEND_MESSEGE_REQUEST_CODE:
             client_id = request.cid
-            target_client_id = request.payload[0:16]
-            message = Message(client_id, request.payload[16:])
+            target_client_id = request.payload[:Sizes.CLIENT_ID_SIZE]
+            message = Message(client_id, request.payload[Sizes.CLIENT_ID_SIZE:])
             clients[target_client_id].unread_messages.append(message)
             print("Updated user: ", clients[target_client_id])
             payload = target_client_id + message.message_id

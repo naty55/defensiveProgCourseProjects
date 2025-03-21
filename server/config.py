@@ -1,6 +1,8 @@
 PORT_FILE_NAME = "myport.info"
 DEFAULT_SERVER_PORT = 1357
 DEFAULT_SERVER_HOST = "localhost"
-SERVER_VERSION = 1
+SERVER_VERSION = 2
+DB_FILE = "defensive.db"
+
 
 
