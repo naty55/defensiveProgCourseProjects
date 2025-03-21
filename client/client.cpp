@@ -266,9 +266,9 @@ const std::string Client::get_peer_by_client_id(const uint8_t client_id[HEADER_C
 }
 
 bool Client::sendMessage(const Message& message) {
-    uint8_t buffer[5000] = { 0 };
-    message.to_bytes(buffer, message.size_in_bytes());
-    Request req(getClientId(), CLIENT_VERSION, RequestCode::REQ_SEND_MSG, (unsigned long int) message.size_in_bytes(), buffer);
+    std::vector<uint8_t> buffer;
+    message.to_bytes(buffer);
+    Request req(getClientId(), CLIENT_VERSION, RequestCode::REQ_SEND_MSG, (unsigned long int) message.size_in_bytes(), buffer.data());
     std::unique_ptr<Response> res;
     try {
         res = send_request_and_get_response(req, ResponseCode::RES_MSG_SENT);

@@ -8,7 +8,8 @@
 
 using boost::asio::ip::tcp;
 
-static void validate_response_code(const ResponseHeader *header, ResponseCode expected) {
+static void validate_response_code(const uint8_t* first_packet, ResponseCode expected) {
+    const ResponseHeader* header = reinterpret_cast<const ResponseHeader*>(first_packet);
     ResponseCode response_code = static_cast<ResponseCode>(header->response_code);
     if (response_code == ResponseCode::RES_SERVER_ERROR) {
         throw stringable_client_exception("Server returned with error");
@@ -18,7 +19,11 @@ static void validate_response_code(const ResponseHeader *header, ResponseCode ex
     }
 }
 
-static size_t validate_size(const ResponseHeader* header, const size_t read_length, const bool expect_variable_payload_length) {
+static size_t validate_size(const uint8_t* first_packet, const size_t read_length, const bool expect_variable_payload_length) {
+    if (read_length < sizeof(ResponseHeader)) {
+        throw stringable_client_exception("Network error - response is too small might be because of slow network");
+    }
+    const ResponseHeader* header = reinterpret_cast<const ResponseHeader*>(first_packet);
     size_t expected_size = header->payload_size + sizeof(ResponseHeader);
     if ((read_length != expected_size && !expect_variable_payload_length) || (expect_variable_payload_length && expected_size < read_length)) {
         throw stringable_client_exception("Network error - Wrong size of response");
@@ -39,33 +44,38 @@ static void send_request(tcp::socket &s, boost::asio::io_context &ctx, const Req
     }
 }
 
+static size_t recieve_response(tcp::socket& s, std::vector<uint8_t> &response_buffer, ResponseCode expected_response_code, const bool expect_variable_payload_length) {
+    response_buffer.clear();
+    boost::system::error_code error;
+    std::array<uint8_t, BUFFER_SIZE> temp;
+    size_t read_length = s.read_some(boost::asio::buffer(temp), error);
+    if (error && error != boost::asio::error::eof) {
+        throw stringable_client_exception("Network error - receive data failed");
+    }
+    response_buffer.assign(temp.begin(), temp.begin() + read_length);
+    const size_t expected_size = validate_size(temp.data(), read_length, expect_variable_payload_length);
+    validate_response_code(temp.data(), expected_response_code);
+
+    while (expect_variable_payload_length && read_length < expected_size) {
+        size_t temp_length = s.read_some(boost::asio::buffer(temp), error);
+        response_buffer.assign(temp.begin(), temp.begin() + read_length);
+    }
+    if (read_length != expected_size) {
+        throw stringable_client_exception("Network error resposne is corrupted");
+    }
+    return read_length;
+}
+
 std::unique_ptr<Response> send_request_and_get_response(Request &request, ResponseCode expected_response_code) {
 	RequestCode request_code = request.getRequestCode();
 	bool expect_variable_payload_length = request_code == RequestCode::REQ_CLIENTS_LIST || request_code == RequestCode::REQ_PENDING_MSGS;
-    boost::system::error_code error;
     boost::asio::io_context ctx;
     tcp::socket s(ctx);
     send_request(s, ctx, request);
-    
-    std::array<uint8_t, BUFFER_SIZE> response_buffer;
-    size_t read_length = s.read_some(boost::asio::buffer(response_buffer), error);
-    if( error && error != boost::asio::error::eof ) {
-        throw stringable_client_exception("Network error - receive data failed");
-    }
-    const uint8_t* first_packet = response_buffer.data();
-    const ResponseHeader* header = reinterpret_cast<const ResponseHeader*>(first_packet);
-	
-    validate_response_code(header, expected_response_code);
-    const size_t expected_size = validate_size(header, read_length, expect_variable_payload_length);
 
-    const uint8_t* data = first_packet;
-    std::vector<uint8_t> resposne_vector(read_length);
-	while (expect_variable_payload_length && read_length < expected_size) { 
-        
-
-        
-		
-	}
+    std::vector<uint8_t> response_buffer;
+    size_t read_length = recieve_response(s, response_buffer, expected_response_code, expect_variable_payload_length);
     s.close();
-    return std::make_unique<Response>(data, read_length);
+    return std::make_unique<Response>(response_buffer.data(), read_length);
+    
 }

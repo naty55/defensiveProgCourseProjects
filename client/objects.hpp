@@ -51,7 +51,7 @@ public:
         const uint8_t target_client_id[HEADER_CLIENT_ID_SIZE],
         const uint8_t message_type,
         const std::string &content);
-    void to_bytes(unsigned char* buffer, size_t size) const;
+    void to_bytes(std::vector<uint8_t>& buffer) const;
     size_t size_in_bytes() const;        
     friend std::ostream& operator<<(std::ostream& os, const Message& message);
 };

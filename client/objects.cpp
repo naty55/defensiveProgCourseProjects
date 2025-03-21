@@ -1,5 +1,6 @@
 #include "objects.hpp"
 #include "config.hpp"
+#include "exceptions.hpp"
 #include <cstring>
 #include <iostream>
 
@@ -68,17 +69,16 @@ Message::Message(
         header.message_type = message_type;
         header.content_size = static_cast<uint32_t>(content.size());
         this->message_content = content;
-        
+        if (this->message_content.size() != header.content_size) {
+            throw stringable_client_exception("actual message content length != content length");
+        }
 }
 
-void Message::to_bytes(unsigned char *buffer, size_t size) const {
-    if (size < size_in_bytes()) {
-        std::cout << "Buffer size is less than the size of the message" << std::endl;
-        std::cout << "Buffer size: " << size << std::endl;
-        throw;
+void Message::to_bytes(std::vector<uint8_t> &buffer) const {
+    buffer.insert(buffer.begin(), reinterpret_cast<const char*>(&header), reinterpret_cast<const char*>(&header) + sizeof(header));
+    if (header.content_size > 0) {
+        buffer.insert(buffer.begin() + sizeof(header), message_content.data(), message_content.data() + header.content_size);
     }
-    std::memcpy(buffer, &header, sizeof(header));
-    std::memcpy(buffer + sizeof(header), message_content.data(), header.content_size);
 }
 
 size_t Message::size_in_bytes() const {
