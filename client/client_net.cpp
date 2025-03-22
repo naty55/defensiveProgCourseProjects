@@ -48,17 +48,19 @@ static size_t recieve_response(tcp::socket& s, std::vector<uint8_t> &response_bu
     response_buffer.clear();
     boost::system::error_code error;
     std::array<uint8_t, BUFFER_SIZE> temp;
-    size_t read_length = s.read_some(boost::asio::buffer(temp), error);
+    size_t read_length = s.read_some(boost::asio::buffer(temp, BUFFER_SIZE), error);
     if (error && error != boost::asio::error::eof) {
         throw stringable_client_exception("Network error - receive data failed");
     }
-    response_buffer.assign(temp.begin(), temp.begin() + read_length);
+    response_buffer.insert(response_buffer.end(), temp.begin(), temp.begin() + read_length);
     const size_t expected_size = validate_size(temp.data(), read_length, expect_variable_payload_length);
     validate_response_code(temp.data(), expected_response_code);
 
     while (expect_variable_payload_length && read_length < expected_size) {
-        size_t temp_length = s.read_some(boost::asio::buffer(temp), error);
-        response_buffer.assign(temp.begin(), temp.begin() + read_length);
+        std::cout << "Reading... read_length=" << read_length << " expected size=" << expected_size << "length of response_buffer=" << response_buffer.size() << std::endl;
+        size_t temp_length = s.read_some(boost::asio::buffer(temp, BUFFER_SIZE), error);
+        response_buffer.insert(response_buffer.end(), temp.begin(), temp.begin() + temp_length);
+        read_length += temp_length;
     }
     if (read_length != expected_size) {
         throw stringable_client_exception("Network error resposne is corrupted");
