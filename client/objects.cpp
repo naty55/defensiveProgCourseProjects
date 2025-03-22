@@ -8,11 +8,11 @@ Request::Request(
     const uint8_t *clientId,
     uint8_t client_version,
     RequestCode request_code,
-    unsigned long int payload_size,
+    uint32_t payload_size,
     const uint8_t *payload) {
         std::memcpy(header.client_id, clientId, HEADER_CLIENT_ID_SIZE);
         header.client_version = client_version;
-        header.request_code = request_code;
+        header.request_code = static_cast<uint16_t>(request_code);
         header.payload_size = payload_size;
         if (payload != nullptr) {
             std::cout << "Payload: " << payload << std::endl;

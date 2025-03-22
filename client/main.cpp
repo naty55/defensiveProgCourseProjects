@@ -32,6 +32,9 @@ void client_loop() {
             running = handle_command(line, client);
             line.clear();
         }
+        catch (const stringable_client_exception& e) {
+            std::cout << e;
+        }
         catch (const std::exception& e) {
             std::cout << "Error: " << e.what() << std::endl;
         }
@@ -66,8 +69,8 @@ bool handle_command(std::string& line, Client& client) {
 		}
         std::string client_name;
         while (client_name.size() + 1 > HEADER_CLIENT_NAME_SIZE || client_name.size() == 0) {
-            std::cout << "Please enter your name: ";
-            std::cin >> client_name;
+            std::cout << "Please enter your name (should be of 1-254 chars): ";
+            std::getline(std::cin, client_name);
         }
 		client.registerClient(client_name);
         break;
@@ -132,20 +135,11 @@ bool handle_command(std::string& line, Client& client) {
         std::cout << "Please enter a filename: ";
         std::string file_name;
         std::getline(std::cin, file_name);
-        try {
-            client.sendFileMessage(read_file(file_name), peer_name);
-		}
-        catch (const stringable_client_exception& e) {
-            std::cout << e;
-        }
-		catch (const std::exception& e) {
-			std::cout << "Unkonwn error ocurred: " <<  e.what() << std::endl;
-		}
-        
-        break;
+        client.sendFileMessage(read_file(file_name), peer_name);
         break;
     }
     default: {
+        throw stringable_client_exception("Not a valid command");
         break;
     }
     }

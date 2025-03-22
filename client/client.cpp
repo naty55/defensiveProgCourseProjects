@@ -55,12 +55,11 @@ void Client::printPeers() {
     std::cout << "Users count: " << peers.size() << "\n"; 
     std::cout << "Users:\n";
     for (auto const& [name, peer] : peers) {
-        std::cout << "Name: " << name << " ClientId: ";
-        printBytes(peer.clientId, HEADER_CLIENT_ID_SIZE);
+        std::cout << "Name: " << name << " ClientId: 0x" << bytes_to_hex_string(peer.clientId, HEADER_CLIENT_ID_SIZE) << "\n";
     }
 }
 
-bool Client::is_peer_known(const std::string &peer_name) {
+bool inline Client::is_peer_known(const std::string &peer_name) {
     return peers.find(peer_name) != peers.end();
 }
 
@@ -82,7 +81,7 @@ bool Client::registerClient(const std::string &client_name) {
     unsigned char payload[HEADER_CLIENT_NAME_SIZE + HEADER_CLIENT_PUBLIC_KEY_SIZE] = { 0 };
     std::memcpy(payload, client_name.c_str(), client_name.size());
     std::memcpy(payload + HEADER_CLIENT_NAME_SIZE, getPublicKeyOfSelf(), HEADER_CLIENT_PUBLIC_KEY_SIZE);
-    Request req(getClientId(), CLIENT_VERSION, RequestCode::REQ_REGISTRATION, (unsigned long int) (HEADER_CLIENT_NAME_SIZE + HEADER_CLIENT_PUBLIC_KEY_SIZE), payload);
+    Request req(getClientId(), CLIENT_VERSION, RequestCode::REQ_REGISTRATION, static_cast<uint32_t>(HEADER_CLIENT_NAME_SIZE + HEADER_CLIENT_PUBLIC_KEY_SIZE), payload);
     std::unique_ptr<Response> res;
     try {
         res = send_request_and_get_response(req, ResponseCode::RES_REGISTRATION);
@@ -97,14 +96,13 @@ bool Client::registerClient(const std::string &client_name) {
     setClientId(client_id);
     setClientName(client_name);
     setRegistered(true);
-    std::cout << "Registered! client_id=";
-    printBytes(client_id, HEADER_CLIENT_ID_SIZE);
+    std::cout << "Registered! client_id=0x" << bytes_to_hex_string(client_id, HEADER_CLIENT_ID_SIZE) << "\n";
     std::cout << "client_name=" << client_name << std::endl;
     return true;
 }
 
 bool Client::getPeers() {
-    Request req(getClientId(), CLIENT_VERSION, RequestCode::REQ_CLIENTS_LIST, (unsigned long int) 0, nullptr);
+    Request req(getClientId(), CLIENT_VERSION, RequestCode::REQ_CLIENTS_LIST, static_cast<uint32_t>(0), nullptr);
     std::unique_ptr<Response> res;
     try {
         res = send_request_and_get_response(req, ResponseCode::RES_USERS);
@@ -118,16 +116,18 @@ bool Client::getPeers() {
     size_t user_count = res.get()->getPayloadSize() / peer_size;
 
     if (res.get()->getPayloadSize() % peer_size) {
-        std::cout << "Wrong size of payload" << std::endl;
-        return false;
+        throw stringable_client_exception("Wrong payload size");
     }
 
     for (int i = 0; i < user_count; i++) {
         char user_name[HEADER_CLIENT_NAME_SIZE] = { 0 };
         uint8_t user_id[HEADER_CLIENT_ID_SIZE] = { 0 };
-        std::memcpy(user_id, res_payload + i * (16 + 255), 16);
-        std::memcpy(user_name, res_payload + i * (16 + 255) + 16, 255);
+        std::memcpy(user_id, res_payload + i * (HEADER_CLIENT_ID_SIZE + HEADER_CLIENT_NAME_SIZE), HEADER_CLIENT_ID_SIZE);
+        std::memcpy(user_name, res_payload + i * (HEADER_CLIENT_ID_SIZE + HEADER_CLIENT_NAME_SIZE) + HEADER_CLIENT_ID_SIZE, HEADER_CLIENT_NAME_SIZE);
         std::string peer_name = std::string(user_name);
+        if (peer_name == name) {
+            throw stringable_client_exception("Got peer with same username as self - which is against the protocol rules");
+        }
 		if (!is_peer_known(peer_name)) {
             addPeer(peer_name, user_id);
 		}
@@ -136,12 +136,9 @@ bool Client::getPeers() {
 }
 
 bool Client::requestPublicKey(const std::string& peer_name) {
-	if (!is_peer_known(peer_name)) {
-		std::cout << "Peer is not in list\n";
-		return false;
-	}
+    assertPeerIsKnown(peer_name);
     const uint8_t* target_client_id = getClientIdOf(peer_name);
-    Request req(getClientId(), CLIENT_VERSION, RequestCode::REQ_PUBLIC_KEY, (unsigned long int) HEADER_CLIENT_ID_SIZE, target_client_id);
+    Request req(getClientId(), CLIENT_VERSION, RequestCode::REQ_PUBLIC_KEY, static_cast<uint32_t>(HEADER_CLIENT_ID_SIZE), target_client_id);
     std::unique_ptr<Response> res;
     try {
         res = send_request_and_get_response(req, ResponseCode::RES_PUBLIC_KEY);
@@ -160,7 +157,7 @@ bool Client::requestPublicKey(const std::string& peer_name) {
 }
 
 bool Client::requestPendingMessages(std::vector<ReceivedMessage>& messages) {
-    Request req(getClientId(), CLIENT_VERSION, RequestCode::REQ_PENDING_MSGS, (unsigned long int) 0, nullptr);
+    Request req(getClientId(), CLIENT_VERSION, RequestCode::REQ_PENDING_MSGS, static_cast<uint32_t>(0), nullptr);
     std::unique_ptr<Response> res;
     try {
         res = send_request_and_get_response(req, ResponseCode::RES_PENDING_MSGS);
@@ -180,8 +177,7 @@ bool Client::requestPendingMessages(std::vector<ReceivedMessage>& messages) {
         const RecievedMessageHeader* ptr = reinterpret_cast<const RecievedMessageHeader*>(res_payload);
         size_t size_of_next_message = ptr->content_size + sizeof(RecievedMessageHeader);
 		if (res_payload + size_of_next_message > res_payload_end) {
-			std::cout << "Wrong size of payload" << std::endl;
-            return false;
+			throw stringable_client_exception("Error parsing pending messages - wrong message size");
 		}
 		handleMessage(ptr, res_payload + sizeof(RecievedMessageHeader), messages);
         res_payload += size_of_next_message;
@@ -194,6 +190,7 @@ bool Client::handleMessage(const RecievedMessageHeader *header, const uint8_t *p
     MessageType message_type = static_cast<MessageType>(header->message_type);
     std::string display_string = "";
     std::string peer_name = get_peer_by_client_id(header->from_client_id);
+
     if (MessageType::MSG_SYMMETRIC_KEY_REQUEST != message_type && !is_peer_known(peer_name) ) {
         std::cout << "Got message from unkonwn peer - dropping message\n";
         return false;
@@ -208,11 +205,10 @@ bool Client::handleMessage(const RecievedMessageHeader *header, const uint8_t *p
         if (peers[peer_name].askedForSymmetricKey) {
             std::string sk = rsapriv.decrypt(reinterpret_cast<const char*>(payload), static_cast<unsigned int>(content_size));
             setSymmetricKey(peer_name, reinterpret_cast<const uint8_t*>(sk.c_str()));
-            std::cout << "New symmetric key: ";
-			printBytes(reinterpret_cast<const uint8_t*>(sk.c_str()), SYMMETRIC_KEY_SIZE);
         }
         else {
 			std::cout << "Received symmetric key from " << peer_name << " without asking for it - message is droped\n";
+            return false;
         }
         break;
         }
@@ -266,9 +262,12 @@ const std::string Client::get_peer_by_client_id(const uint8_t client_id[HEADER_C
 }
 
 bool Client::sendMessage(const Message& message) {
+	if (message.size_in_bytes() > UINT32_MAX) {
+		throw stringable_client_exception("Message is too long, consider breaking it down");
+	}
     std::vector<uint8_t> buffer;
     message.to_bytes(buffer);
-    Request req(getClientId(), CLIENT_VERSION, RequestCode::REQ_SEND_MSG, (unsigned long int) message.size_in_bytes(), buffer.data());
+    Request req(getClientId(), CLIENT_VERSION, RequestCode::REQ_SEND_MSG, static_cast<uint32_t>(message.size_in_bytes()), buffer.data());
     std::unique_ptr<Response> res;
     try {
         res = send_request_and_get_response(req, ResponseCode::RES_MSG_SENT);
@@ -277,16 +276,11 @@ bool Client::sendMessage(const Message& message) {
         std::cout << e;
         return false;
     }
-    const uint8_t* res_payload = res.get()->getPayload();
-    printBytes(res_payload, res.get()->getPayloadSize());
     return true;
 }
 
 bool Client::sendSymmetricKeyReqMessage(const std::string& peer_name) {
-    if (!is_peer_known(peer_name)) {
-        std::cout << "Client is not in list - please request all peers from server";
-        return false;
-    }
+    assertPeerIsKnown(peer_name);
 	peers[peer_name].askedForSymmetricKey = true;
     const uint8_t* to_client_id = getClientIdOf(peer_name);
     Message message(to_client_id, MessageType::MSG_SYMMETRIC_KEY_REQUEST, "");
@@ -294,21 +288,15 @@ bool Client::sendSymmetricKeyReqMessage(const std::string& peer_name) {
 }
 
 bool Client::sendSymmetricKeyMessage(const std::string& peer_name) {
-    if (!is_peer_known(peer_name)) {
-        std::cout << "Client is not in list - please request all peers from server";
-        return false;
-    }
+    assertPeerIsKnown(peer_name);
 	const Peer peer = peers[peer_name];
 	if (!peer.isPublicKeySet) {
-		std::cout << "Public key for " <<  peer_name << " is not set - please request public key from server";
-		return false;
+		throw stringable_client_exception("Public key for " +  peer_name + " is not set - please request public key from server");
 	}
     const uint8_t* to_client_id = getClientIdOf(peer_name);
 	AESWrapper aes;
 	setSymmetricKey(peer_name, aes.getKey());
-	std::cout << "Set Symmetric key for " << peer_name << std::endl << "Symmetric key:";
-	printBytes(peers[peer_name].symmetricKey, SYMMETRIC_KEY_SIZE);
-    std::cout << "\n";
+	std::cout << "Setting Symmetric key for " << peer_name;
     RSAPublicWrapper rsaEncryptor(peer.publicKey, HEADER_CLIENT_PUBLIC_KEY_SIZE);
     std::string encrypted_sk = rsaEncryptor.encrypt(reinterpret_cast<const char*>(peers[peer_name].symmetricKey), SYMMETRIC_KEY_SIZE);
     Message message(to_client_id, MessageType::MSG_SYMMETRIC_KEY_SEND, encrypted_sk);
@@ -320,14 +308,10 @@ bool Client::sendTextMessage(const std::string& message, const std::string& peer
 }
 
 bool Client::sendTextMessage(const std::string &message, const std::string &peer_name, bool isFile){
-    if (!is_peer_known(peer_name)) {
-        std::cout << "Client is not in list - please request all peers from server\n";
-        return false;
-    }
+	assertPeerIsKnown(peer_name);
 	const Peer peer = peers[peer_name];
     if (!peer.isSymmetricKeySet) {
-		std::cout << "Symmetric key is not set for " << peer_name << " - please request symmetric key\n";
-        return false;
+		throw stringable_client_exception("Symmetric key is not set for " + peer_name + " - please request symmetric key");
     }
     const uint8_t* to_client_id = getClientIdOf(peer_name);
 	AESWrapper aes(peer.symmetricKey, SYMMETRIC_KEY_SIZE);
@@ -339,4 +323,10 @@ bool Client::sendTextMessage(const std::string &message, const std::string &peer
 
 bool Client::sendFileMessage(const std::string& file_content, const std::string& peer_name) {
 	return sendTextMessage(file_content, peer_name, true);
+}
+
+void Client::assertPeerIsKnown(const std::string& peer_name) {
+	if (!is_peer_known(peer_name)) {
+        throw stringable_client_exception("Client " + peer_name + " is not in list - please request all peers from server");
+	}
 }

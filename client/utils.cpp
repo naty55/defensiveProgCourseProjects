@@ -6,31 +6,6 @@
 #include "utils.hpp"  
 #include <filesystem>
 
-std::string get_temp_directory() {  
-	static std::string temp_dir;  
-	if (temp_dir.empty()) {  
-		std::cout << "Looking...";  
-		char* local_temp_dir = nullptr;  
-		size_t len = 0;  
-		if (_dupenv_s(&local_temp_dir, &len, "TMP") != 0 || local_temp_dir == nullptr) {  
-			if (_dupenv_s(&local_temp_dir, &len, "TEMP") != 0 || local_temp_dir == nullptr) {  
-				throw stringable_client_exception("Couldn't locate temp directory");  
-			}  
-		}  
-		temp_dir = std::string(local_temp_dir);  
-		free(local_temp_dir);  
-		local_temp_dir = nullptr;  
-	}  
-	return temp_dir;  
-}  
-
-void printBytes(const uint8_t data[], size_t data_size) {  
-   for (int i =0; i < data_size; i++) {  
-       unsigned char byte = data[i];  
-       std::cout << std::hex << (int)byte << " ";  
-   }  
-   std::cout << std::hex << std::endl;  
-}  
 
 std::string read_file(const std::string filename) {  
 	std::fstream file(filename);  
@@ -46,7 +21,7 @@ std::string read_file(const std::string filename) {
 * Returns path to the file  
 */  
 std::string save_file_in_temp_directory(const std::string& content, const std::string relative_path) {  
-	std::string filepath = std::filesystem::temp_directory_path().string() + "\\" + relative_path;
+	std::string filepath = std::filesystem::temp_directory_path().string() + relative_path;
 	std::ofstream file(filepath);  
 	   if (!file || !file.is_open()) {  
 		throw stringable_client_exception("Couldn't open file: " + filepath + " make sure you have proper permissions to write to the directory");  

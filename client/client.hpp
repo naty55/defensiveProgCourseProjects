@@ -55,4 +55,5 @@ class Client {
     bool sendSymmetricKeyMessage(const std::string& peer_name);
     bool sendTextMessage(const std::string& message, const std::string& peer_name);
     bool sendFileMessage(const std::string& message, const std::string& peer_name);
+    void assertPeerIsKnown(const std::string& peer_name);
 };

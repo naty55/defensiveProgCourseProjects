@@ -57,7 +57,6 @@ static size_t recieve_response(tcp::socket& s, std::vector<uint8_t> &response_bu
     validate_response_code(temp.data(), expected_response_code);
 
     while (expect_variable_payload_length && read_length < expected_size) {
-        std::cout << "Reading... read_length=" << read_length << " expected size=" << expected_size << "length of response_buffer=" << response_buffer.size() << std::endl;
         size_t temp_length = s.read_some(boost::asio::buffer(temp, BUFFER_SIZE), error);
         response_buffer.insert(response_buffer.end(), temp.begin(), temp.begin() + temp_length);
         read_length += temp_length;

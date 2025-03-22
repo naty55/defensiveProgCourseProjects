@@ -10,12 +10,11 @@ private:
     RequestHeader header;
     std::vector<uint8_t> payload;
 public:
-    Request(
-        const uint8_t * clientId,
-        uint8_t client_version,
-        RequestCode request_code,
-        unsigned long int payload_size,
-        const uint8_t *payload);
+    Request(const uint8_t* clientId, 
+        const uint8_t client_version, 
+        const RequestCode request_code, 
+        const uint32_t payload_size, 
+        const uint8_t* payload);
     void to_bytes(std::vector<char> &buffer) const;
     size_t size_in_bytes() const;
 	RequestCode getRequestCode() const;
