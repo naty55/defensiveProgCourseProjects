@@ -4,6 +4,7 @@ from user import User
 from protocol import Request, Response, Message
 from config import DEFAULT_SERVER_HOST, SERVER_VERSION
 import socket 
+from threading import Thread
 from protocol import Codes, Sizes
 
 logger = Logger()
@@ -24,17 +25,25 @@ def main():
         s.listen()
         while True:
             conn, addr = s.accept()
-            handle_connection(conn, addr)
+            Thread(target=handle_connection, args=(conn, addr)).start()
                             
 
 def handle_connection(conn, addr):
     with conn:
         logger.debug(f"Connected by {addr}")
+        request_bytes = b''
         data = conn.recv(1024)
+        request_bytes += data
+        _, _, _, payload_size = Request.read_header(request_bytes)
+        logger.debug(f"Reading payload size: {payload_size}")
+        while data and len(request_bytes) < Request.header_size() + payload_size:
+            logger.debug(f"Read: {len(request_bytes)}")
+            data = conn.recv(1024)
+            request_bytes += data
         if len(data) >= Request.header_size():
             try:
-                logger.debug(f"Request bytes={data}")
-                request = Request.from_bytes(data)
+                logger.info(f"Processing request, len(request-bytes)={len(request_bytes)}")
+                request = Request.from_bytes(request_bytes)
                 handle_request(request, conn)
             except Exception as e:
                 logger.error(f"Got an error {e}")
@@ -88,7 +97,7 @@ def handle_request(request: Request, conn):
     
     logger.info(F"Sending Response {response}")
     res_bytes = response.to_bytes()
-    print("Response bytes: ", res_bytes)
+    print("Response bytes: ", res_bytes if len(res_bytes) < 4096 else res_bytes[:52] + b'...')
     conn.sendall(res_bytes)
         
     

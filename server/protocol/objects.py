@@ -15,26 +15,30 @@ class Request:
     header_format = "<16sBHI" 
     
     def __str__(self):
-        return f"[Request] client_id={self.cid}, client_version={self.client_version}, code={self.req_code}, payload_size={self.payload_size}, payload={self.payload}"
+        return f"[Request] client_id={self.cid}, client_version={self.client_version}, code={self.req_code}, payload_size={self.payload_size}, payload={self.payload if self.payload_size < 52 else self.payload[:52] + b'...'}"
 
     @staticmethod
     def from_bytes(req_bytes):
-        header_length = Request.header_size()
-        if len(req_bytes) < header_length:
-            raise Exception("Invalid request")
-        client_id, client_version, req_code, payload_size = struct.unpack(Request.header_format, req_bytes[0:23])
-        received_payload_size = len(req_bytes) - header_length
+        client_id, client_version, req_code, payload_size = Request.read_header(req_bytes)
+        received_payload_size = len(req_bytes) - Request.header_size()
         if received_payload_size != payload_size:
             logger.warn(f"payload size={payload_size}, actual payload size = {received_payload_size}")
             raise Exception("Invalid request")
         payload = None
         if payload_size > 0:
-            payload = req_bytes[header_length:]
+            payload = req_bytes[Request.header_size():]
         return Request(client_id, client_version, req_code, payload_size, payload)
     
     @staticmethod
     def header_size():
         return struct.calcsize(Request.header_format)
+    
+    @staticmethod
+    def read_header(req: bytes):
+        header_length = Request.header_size()
+        if len(req) < header_length:
+            raise Exception("Header is too short")
+        return struct.unpack(Request.header_format, req[:Request.header_size()])
     
 
 @dataclass
