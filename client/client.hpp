@@ -17,28 +17,33 @@ class Client {
         bool isSymmetricKeySet = false;
         bool askedForSymmetricKey = false;
     } Peer;
-
-    private:
+private:
+    std::string SERVER_HOST;
+    std::string SERVER_PORT;
     std::string name;
     uint8_t _clientId[HEADER_CLIENT_ID_SIZE] = {0};
     char _clientPublicKey[HEADER_CLIENT_PUBLIC_KEY_SIZE] = {0};
-    bool _isRegistered = false;
+    bool _is_registered = false;
     RSAPrivateWrapper rsapriv;
     std::unordered_map<std::string, Peer> peers;
 
+    void read_server_info();
+    void read_me_info();
     bool sendMessage(const Message& message);
     bool handleMessage(const RecievedMessageHeader* header, const uint8_t* payload, std::vector<ReceivedMessage>& messages);
     const std::string get_peer_by_client_id(const uint8_t[HEADER_CLIENT_ID_SIZE]) const;
     bool sendTextMessage(const std::string& message, const std::string& peer_name, bool isFile);
 
-    public:
+public:
     Client();
     Client(std::string &filename);
-    void setClientId(const uint8_t (&clientId)[HEADER_CLIENT_ID_SIZE]);
+    void setClientId(const uint8_t* clientId);
     void setClientName(const std::string &clientName);
+    const std::string get_client_name() const;
     void setRegistered(bool isRegistered);
     bool isRegistered() const;
-    const uint8_t* getClientId();
+    const uint8_t* getClientId() const;
+    void save_me_info() const;
     const char* getPublicKeyOfSelf();
     void clearKnownPeers ();
     void addPeer(const std::string &name, const uint8_t clientId[HEADER_CLIENT_ID_SIZE]);

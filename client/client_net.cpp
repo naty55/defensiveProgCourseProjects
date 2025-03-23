@@ -4,6 +4,7 @@
 #include "objects.hpp"
 #include "protocol.hpp"
 #include "exceptions.hpp"
+#include "utils.hpp"
 #include <memory>
 
 using boost::asio::ip::tcp;
@@ -31,7 +32,7 @@ static size_t validate_size(const uint8_t* first_packet, const size_t read_lengt
     return expected_size;
 }
 
-static void send_request(tcp::socket &s, boost::asio::io_context &ctx, const Request& request) {
+static void send_request(tcp::socket &s, boost::asio::io_context &ctx, const Request& request, const std::string &SERVER_HOST, const std::string &SERVER_PORT) {
     boost::system::error_code error;
     tcp::resolver resolver(ctx);
     auto endpoint = resolver.resolve(SERVER_HOST, SERVER_PORT);
@@ -67,16 +68,32 @@ static size_t recieve_response(tcp::socket& s, std::vector<uint8_t> &response_bu
     return read_length;
 }
 
-std::unique_ptr<Response> send_request_and_get_response(Request &request, ResponseCode expected_response_code) {
+std::unique_ptr<Response> send_request_and_get_response(Request &request, ResponseCode expected_response_code, const std::string &SERVER_HOST, const std::string &SERVER_PORT) {
 	RequestCode request_code = request.getRequestCode();
 	bool expect_variable_payload_length = request_code == RequestCode::REQ_CLIENTS_LIST || request_code == RequestCode::REQ_PENDING_MSGS;
     boost::asio::io_context ctx;
     tcp::socket s(ctx);
-    send_request(s, ctx, request);
+    try {
+        send_request(s, ctx, request, SERVER_HOST, SERVER_PORT);
+    }
+    catch (stringable_client_exception& e) {
+            throw e;
+    } 
+    catch (...) {
+        throw stringable_client_exception("Network error occurred while sending request");
+    }
+
 
     std::vector<uint8_t> response_buffer;
-    size_t read_length = recieve_response(s, response_buffer, expected_response_code, expect_variable_payload_length);
-    s.close();
-    return std::make_unique<Response>(response_buffer.data(), read_length);
-    
+    try {
+        size_t read_length = recieve_response(s, response_buffer, expected_response_code, expect_variable_payload_length);
+        s.close();
+        return std::make_unique<Response>(response_buffer.data(), read_length);
+    }
+    catch (stringable_client_exception& e) {
+        throw e;
+    }
+    catch (...) {
+        throw stringable_client_exception("Network error occurred while reading response");
+    }
 }

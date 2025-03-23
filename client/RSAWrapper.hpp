@@ -27,12 +27,12 @@ private:
 	CryptoPP::RSA::PublicKey _publicKey;
 
 	RSAPublicWrapper(const RSAPublicWrapper& rsapublic);
-	RSAPublicWrapper& operator=(const RSAPublicWrapper& rsapublic) = delete;
 public:
 
 	RSAPublicWrapper(const char* key, unsigned int length);
 	RSAPublicWrapper(const std::string& key);
 	~RSAPublicWrapper();
+	RSAPublicWrapper& operator=(const RSAPublicWrapper& rsapublic) = default;
 
 	std::string getPublicKey() const;
 	char* getPublicKey(char* keyout, unsigned int length) const;
@@ -52,12 +52,12 @@ private:
 	CryptoPP::RSA::PrivateKey _privateKey;
 
 	RSAPrivateWrapper(const RSAPrivateWrapper& rsaprivate);
-	RSAPrivateWrapper& operator=(const RSAPrivateWrapper& rsaprivate) = delete;
 public:
 	RSAPrivateWrapper();
 	RSAPrivateWrapper(const char* key, unsigned int length);
 	RSAPrivateWrapper(const std::string& key);
 	~RSAPrivateWrapper();
+	RSAPrivateWrapper& operator=(const RSAPrivateWrapper& rsaprivate);
 
 	std::string getPrivateKey() const;
 	char* getPrivateKey(char* keyout, unsigned int length) const;

@@ -10,18 +10,31 @@
 #include "utils.hpp"
 #include "exceptions.hpp"
 
-void client_loop();
 bool handle_command(std::string& line, Client& client);
+void client_loop(Client& client);
 
 int main() {
-    client_loop();
+    try {
+        Client client;
+        if (client.isRegistered()) {
+            std::cout << "Hello " + client.get_client_name() << " Welcome back";
+        }
+        client_loop(client);
+    } 
+    catch (critical_client_exception& e) {
+        std::cout << e;
+        exit(-1);
+    }
+    catch (...) {
+        std::cout << "An exception occurred\n";
+        exit(-1);
+    }
     std::cout << "See you later!" << std::endl;
     return 0;
 }
 
-void client_loop() {
+static void client_loop(Client &client) {
     bool running = true;
-    Client client;
     while (running) {
         std::cout << CLIENT_MESSAGE << std::endl;
         std::string line;
@@ -73,6 +86,7 @@ bool handle_command(std::string& line, Client& client) {
             std::getline(std::cin, client_name);
         }
 		client.registerClient(client_name);
+        client.save_me_info();
         break;
     }
     case Commands::CLIENTS_LIST: {

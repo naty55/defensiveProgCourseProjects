@@ -3,20 +3,34 @@
 #include <cstring>
 #include <string>
 #include <iostream>
+#include <sstream>
+#include <vector>
 #include <memory>
 #include "client_net.hpp"
 #include "exceptions.hpp"
 #include "AESWrapper.hpp"
 
 Client::Client() {
+    try {
+        read_server_info();
+        read_me_info();
+    }
+    catch (critical_client_exception& e) {
+        throw e;
+    } 
+    catch (std::exception& e) {
+        throw critical_client_exception("An error occurred in client initialization: " + std::string(e.what()));
+    }
     auto pk = rsapriv.getPublicKey();
     std::memcpy(_clientPublicKey, pk.c_str(), HEADER_CLIENT_PUBLIC_KEY_SIZE);
+    
+    
 }
 
 Client::Client(std::string &filename) {
 }
 
-void Client::setClientId(const uint8_t (&clientId)[HEADER_CLIENT_ID_SIZE]) {
+void Client::setClientId(const uint8_t *clientId) {
     std::memcpy(_clientId, clientId, HEADER_CLIENT_ID_SIZE);
 }
 
@@ -24,15 +38,19 @@ void Client::setClientName(const std::string &clientName) {
     name = clientName;
 }
 
+const std::string Client::get_client_name() const {
+    return name;
+}
+
 void Client::setRegistered(bool isRegistered) {
-    _isRegistered = isRegistered;
+    _is_registered = isRegistered;
 }
 
 bool Client::isRegistered() const {
-    return _isRegistered;
+    return _is_registered;
 }
 
-const uint8_t* Client::getClientId() {
+const uint8_t* Client::getClientId() const{
     return _clientId;
 }
 
@@ -84,10 +102,10 @@ bool Client::registerClient(const std::string &client_name) {
     Request req(getClientId(), CLIENT_VERSION, RequestCode::REQ_REGISTRATION, static_cast<uint32_t>(HEADER_CLIENT_NAME_SIZE + HEADER_CLIENT_PUBLIC_KEY_SIZE), payload);
     std::unique_ptr<Response> res;
     try {
-        res = send_request_and_get_response(req, ResponseCode::RES_REGISTRATION);
-    } catch (stringable_client_exception& e) {
-        std::cout << e;
-        return false;
+        res = send_request_and_get_response(req, ResponseCode::RES_REGISTRATION, SERVER_HOST, SERVER_PORT);
+    }
+    catch (...) {
+        throw stringable_client_exception("Network error occurred");
     }
 
     const uint8_t* res_payload = res.get()->getPayload();
@@ -105,7 +123,7 @@ bool Client::getPeers() {
     Request req(getClientId(), CLIENT_VERSION, RequestCode::REQ_CLIENTS_LIST, static_cast<uint32_t>(0), nullptr);
     std::unique_ptr<Response> res;
     try {
-        res = send_request_and_get_response(req, ResponseCode::RES_USERS);
+        res = send_request_and_get_response(req, ResponseCode::RES_USERS, SERVER_HOST, SERVER_PORT);
     }
     catch (stringable_client_exception& e) {
         std::cout << e;
@@ -141,7 +159,7 @@ bool Client::requestPublicKey(const std::string& peer_name) {
     Request req(getClientId(), CLIENT_VERSION, RequestCode::REQ_PUBLIC_KEY, static_cast<uint32_t>(HEADER_CLIENT_ID_SIZE), target_client_id);
     std::unique_ptr<Response> res;
     try {
-        res = send_request_and_get_response(req, ResponseCode::RES_PUBLIC_KEY);
+        res = send_request_and_get_response(req, ResponseCode::RES_PUBLIC_KEY, SERVER_HOST, SERVER_PORT);
     }
     catch (stringable_client_exception& e) {
         std::cout << e;
@@ -160,7 +178,7 @@ bool Client::requestPendingMessages(std::vector<ReceivedMessage>& messages) {
     Request req(getClientId(), CLIENT_VERSION, RequestCode::REQ_PENDING_MSGS, static_cast<uint32_t>(0), nullptr);
     std::unique_ptr<Response> res;
     try {
-        res = send_request_and_get_response(req, ResponseCode::RES_PENDING_MSGS);
+        res = send_request_and_get_response(req, ResponseCode::RES_PENDING_MSGS, SERVER_HOST, SERVER_PORT);
     }
     catch (stringable_client_exception& e) {
         std::cout << e;
@@ -261,6 +279,66 @@ const std::string Client::get_peer_by_client_id(const uint8_t client_id[HEADER_C
     return "";
 }
 
+void Client::read_server_info() {
+    std::string server_info = read_file(SERVER_INFO);
+    size_t split_index = server_info.find(':');
+    if (split_index > 1) {
+        SERVER_HOST = server_info.substr(0, split_index);
+        SERVER_PORT = server_info.substr(split_index + 1, server_info.size() + 1);
+
+    }
+    else {
+        throw critical_client_exception("Server info file is corrupted");
+    }
+
+    size_t port_number = std::stoi(SERVER_PORT);
+    if (port_number <= 0 || 65535 < port_number) {
+        throw critical_client_exception("Port is not valid - probably server info is corrupted");
+    }
+    SERVER_PORT = std::to_string(port_number); // Get rid of whitespaces in original string
+    std::cout << "SERVER_HOST=" << SERVER_HOST << "\n";
+    std::cout << "SERVER_PORT=" << SERVER_PORT << "\n";
+}
+
+void Client::read_me_info() {
+    try {
+        std::string my_info = read_file(ME_INFO);
+        std::stringstream ss(my_info);
+        std::getline(ss, name);
+        if (name.size() + 1 > HEADER_CLIENT_NAME_SIZE) {
+            name = "";
+            return;
+        }
+        std::string client_id_str;
+        std::getline(ss, client_id_str);
+        if (client_id_str.size() != static_cast<size_t>(HEADER_CLIENT_ID_SIZE) * 2) {
+            return;
+        }
+        std::vector<uint8_t> client_id_bytes;
+        hex_string_to_bytes(client_id_str, client_id_bytes);
+        setClientId(client_id_bytes.data());
+
+        std::string private_key_encoded;
+        std::getline(ss, private_key_encoded, '\0');
+        std::string private_key_decoded = decode_base64(private_key_encoded);
+        RSAPrivateWrapper priv(private_key_decoded);
+        rsapriv = priv;
+    }
+    catch (...) {
+        return; // Just ignore any error and start in unregistered mode
+    }
+    setRegistered(true);
+}
+
+void Client::save_me_info() const {
+    if (!isRegistered()) {
+        throw stringable_client_exception("Client should be in registered state to save me.info file");
+    }
+    std::string content = name + "\n" + bytes_to_hex_string(getClientId(), HEADER_CLIENT_ID_SIZE) + "\n" + encode_base64(rsapriv.getPrivateKey());
+    std::cout << "SAVING " + content;
+    write_file(ME_INFO, content);
+}
+
 bool Client::sendMessage(const Message& message) {
 	if (message.size_in_bytes() > UINT32_MAX) {
 		throw stringable_client_exception("Message is too long, consider breaking it down");
@@ -270,7 +348,7 @@ bool Client::sendMessage(const Message& message) {
     Request req(getClientId(), CLIENT_VERSION, RequestCode::REQ_SEND_MSG, static_cast<uint32_t>(message.size_in_bytes()), buffer.data());
     std::unique_ptr<Response> res;
     try {
-        res = send_request_and_get_response(req, ResponseCode::RES_MSG_SENT);
+        res = send_request_and_get_response(req, ResponseCode::RES_MSG_SENT, SERVER_HOST, SERVER_PORT);
     }
     catch (stringable_client_exception& e) {
         std::cout << e;

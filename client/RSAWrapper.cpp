@@ -79,6 +79,12 @@ RSAPrivateWrapper::~RSAPrivateWrapper()
 {
 }
 
+RSAPrivateWrapper& RSAPrivateWrapper::operator=(const RSAPrivateWrapper& rsaprivate) {
+	CryptoPP::StringSource ss(rsaprivate.getPrivateKey(), true);
+	_privateKey.Load(ss);
+	return *this;
+}
+
 std::string RSAPrivateWrapper::getPrivateKey() const
 {
 	std::string key;
