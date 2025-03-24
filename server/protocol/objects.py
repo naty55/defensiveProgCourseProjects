@@ -83,4 +83,8 @@ class Message:
     
     @staticmethod
     def generate_msg_id():
-        return random.randbytes(4)
+        return random.randbytes(Sizes.MESSAGE_ID_SIZE)
+    
+    @staticmethod
+    def convert_message_from_db_to_bytes(from_client_id, message_id, message_type, message_size, message_content):
+        return struct.pack(Message.message_header_format, from_client_id, message_id, message_type, message_size) + message_content

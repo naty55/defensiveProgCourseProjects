@@ -1,13 +1,11 @@
 import uuid
 from protocol import Sizes
 class User:
-    def __init__(self, name, public_key):
-        if len(name) > Sizes.CLIENT_NAME_SIZE:
-            raise Exception("Name is too long")
-        diff_len = Sizes.CLIENT_NAME_SIZE - len(name)
+    def __init__(self, name: bytes, public_key: bytes):
+        diff_len: int = Sizes.CLIENT_NAME_SIZE - len(name)
         self.id = uuid.uuid4()
-        self.name = name + b'\0' * diff_len
-        self.public_key = public_key
+        self.name: bytes = name + b'\0' * diff_len
+        self.public_key:bytes = public_key
         self.unread_messages = []
     
     def __str__(self) -> str:
