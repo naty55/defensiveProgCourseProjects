@@ -334,8 +334,9 @@ void Client::save_me_info() const {
     if (!isRegistered()) {
         throw stringable_client_exception("Client should be in registered state to save me.info file");
     }
-    std::string content = name + "\n" + bytes_to_hex_string(getClientId(), HEADER_CLIENT_ID_SIZE) + "\n" + encode_base64(rsapriv.getPrivateKey());
-    std::cout << "SAVING " + content;
+    std::string content = name + "\n" +
+        bytes_to_hex_string(getClientId(), HEADER_CLIENT_ID_SIZE) + "\n" + 
+        encode_base64(rsapriv.getPrivateKey());
     write_file(ME_INFO, content);
 }
 
