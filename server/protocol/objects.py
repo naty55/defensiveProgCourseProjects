@@ -2,6 +2,7 @@ import struct
 from logs import logger
 import random
 from dataclasses import dataclass
+from .protocol import Sizes
 
 @dataclass
 class Request:
@@ -12,7 +13,7 @@ class Request:
     payload: bytes
 
     #### STATIC VARIABLES ####
-    header_format = "<16sBHI" 
+    header_format = f"<{Sizes.CLIENT_ID_SIZE}sBHI" 
     
     def __str__(self):
         return f"[Request] client_id={self.cid}, client_version={self.client_version}, code={self.req_code}, payload_size={self.payload_size}, payload={self.payload if self.payload_size < 52 else self.payload[:52] + b'...'}"
